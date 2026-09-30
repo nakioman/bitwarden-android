@@ -38,7 +38,7 @@ dependencies {
     kover(project(":annotation"))
     kover(project(":app"))
     kover(project(":authenticator"))
-    kover(project(":bitwarden-wear"))
+    kover(project(":wear"))
     kover(project(":authenticatorbridge"))
     kover(project(":core"))
     kover(project(":cxf"))
@@ -55,7 +55,7 @@ detekt {
         "annotation/src",
         "app/src",
         "authenticator/src",
-        "bitwarden-wear/src",
+        "wear/src",
         "authenticatorbridge/src",
         "core/src",
         "cxf/src",

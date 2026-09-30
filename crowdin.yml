@@ -7,8 +7,8 @@ files:
     dest: "/android-ui/%original_file_name%"
     update_option: update_as_unapproved
     type: android
-  - source: "/bitwarden-wear/src/main/res/values/strings.xml"
-    translation: "/bitwarden-wear/src/main/res/values-%android_code%/%original_file_name%"
-    dest: "/android-bitwarden-wear/%original_file_name%"
+  - source: "/wear/src/main/res/values/strings.xml"
+    translation: "/wear/src/main/res/values-%android_code%/%original_file_name%"
+    dest: "/android-wear/%original_file_name%"
     update_option: update_as_unapproved
     type: android

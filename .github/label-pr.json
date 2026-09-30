@@ -22,7 +22,7 @@
     ],
     "app:password-manager": [
       "app/",
-      "bitwarden-wear/",
+      "wear/",
       "cxf/",
       "testharness/"
     ],

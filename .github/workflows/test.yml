@@ -44,9 +44,9 @@ jobs:
           - group: authenticator
             fastlane_method: testLibraries
             fastlane_options: ":authenticator"
-          - group: bitwarden-wear
+          - group: wear
             fastlane_method: testLibraries
-            fastlane_options: ":bitwarden-wear"
+            fastlane_options: ":wear"
           # Library shards
           - group: lib-core-network-bridge
             fastlane_method: testLibraries

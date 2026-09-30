@@ -44,7 +44,7 @@ include(
     ":annotation",
     ":app",
     ":authenticator",
-    ":bitwarden-wear",
+    ":wear",
     ":authenticatorbridge",
     ":core",
     ":cxf",
