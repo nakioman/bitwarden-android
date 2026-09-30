@@ -1,4 +1,4 @@
-package com.bitwarden.authenticator.wear.ui
+package com.x8bit.bitwarden.wear.ui
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -18,7 +18,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.bitwarden.authenticator.wear.R
+import com.x8bit.bitwarden.wear.R
 
 /**
  * Displays the empty account state until accounts are available on the watch.
@@ -31,7 +31,7 @@ internal fun NoAccountsScreen() {
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Image(
-            painter = painterResource(R.drawable.ic_launcher_foreground),
+            painter = painterResource(R.drawable.logo_shield_icon),
             contentDescription = null,
             modifier = Modifier.size(80.dp),
         )

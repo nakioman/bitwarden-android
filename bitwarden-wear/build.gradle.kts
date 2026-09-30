@@ -10,13 +10,13 @@ plugins {
 val wearVersionCodeOffset = 1_000_000_000
 
 configure<ApplicationExtension> {
-    namespace = "com.bitwarden.authenticator.wear"
+    namespace = "com.x8bit.bitwarden.wear"
     compileSdk {
         version = release(libs.versions.compileSdk.get().toInt())
     }
 
     defaultConfig {
-        applicationId = "com.bitwarden.authenticator"
+        applicationId = "com.x8bit.bitwarden"
         minSdk {
             version = release(libs.versions.minSdk.get().toInt())
         }

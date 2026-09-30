@@ -1,10 +1,10 @@
-package com.bitwarden.authenticator.wear
+package com.x8bit.bitwarden.wear
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import com.bitwarden.authenticator.wear.ui.NoAccountsScreen
+import com.x8bit.bitwarden.wear.ui.NoAccountsScreen
 
 /**
  * Entry point for the Wear OS app.
