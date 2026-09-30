@@ -26,7 +26,8 @@
       "testharness/"
     ],
     "app:authenticator": [
-      "authenticator/"
+      "authenticator/",
+      "authenticator-wear/"
     ]
   }
 }

@@ -1,0 +1,60 @@
+import com.android.build.api.dsl.ApplicationExtension
+
+plugins {
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.compose.compiler)
+}
+
+// Keep Wear OS APK codes distinct from phone APK codes in the same Play listing.
+@Suppress("MagicNumber")
+val wearVersionCodeOffset = 1_000_000_000
+
+configure<ApplicationExtension> {
+    namespace = "com.bitwarden.authenticator.wear"
+    compileSdk {
+        version = release(libs.versions.compileSdk.get().toInt())
+    }
+
+    defaultConfig {
+        applicationId = "com.bitwarden.authenticator"
+        minSdk {
+            version = release(libs.versions.minSdk.get().toInt())
+        }
+        targetSdk {
+            version = release(libs.versions.targetSdk.get().toInt())
+        }
+        versionCode = wearVersionCodeOffset + libs.versions.appVersionCode.get().toInt()
+        versionName = libs.versions.appVersionName.get()
+    }
+
+    signingConfigs {
+        getByName("debug") {
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+            storeFile = file("../keystores/debug-bwa.keystore")
+            storePassword = "android"
+        }
+    }
+
+    buildTypes {
+        debug {
+            applicationIdSuffix = ".dev"
+            signingConfig = signingConfigs.getByName("debug")
+        }
+    }
+
+    buildFeatures {
+        compose = true
+    }
+    compileOptions {
+        sourceCompatibility(libs.versions.jvmTarget.get())
+        targetCompatibility(libs.versions.jvmTarget.get())
+    }
+}
+
+dependencies {
+    implementation(libs.androidx.activity.compose)
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.compose.foundation)
+    implementation(libs.androidx.compose.ui)
+}

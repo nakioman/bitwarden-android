@@ -43,7 +43,7 @@ jobs:
           # Authenticator
           - group: authenticator
             fastlane_method: testLibraries
-            fastlane_options: ":authenticator"
+            fastlane_options: ":authenticator :authenticator-wear"
           # Library shards
           - group: lib-core-network-bridge
             fastlane_method: testLibraries

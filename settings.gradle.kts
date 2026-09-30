@@ -44,6 +44,7 @@ include(
     ":annotation",
     ":app",
     ":authenticator",
+    ":authenticator-wear",
     ":authenticatorbridge",
     ":core",
     ":cxf",
