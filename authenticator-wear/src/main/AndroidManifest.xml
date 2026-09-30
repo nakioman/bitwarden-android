@@ -4,9 +4,10 @@
     <uses-feature android:name="android.hardware.type.watch" />
 
     <application
-        android:icon="@drawable/logo_rounded"
+        android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
-        android:theme="@android:style/Theme.Material.NoActionBar">
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:theme="@style/LaunchTheme">
         <meta-data
             android:name="com.google.android.wearable.standalone"
             android:value="false" />
