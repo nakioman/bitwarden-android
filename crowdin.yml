@@ -7,3 +7,8 @@ files:
     dest: "/android-ui/%original_file_name%"
     update_option: update_as_unapproved
     type: android
+  - source: "/authenticator-wear/src/main/res/values/strings.xml"
+    translation: "/authenticator-wear/src/main/res/values-%android_code%/%original_file_name%"
+    dest: "/android-authenticator-wear/%original_file_name%"
+    update_option: update_as_unapproved
+    type: android

@@ -27,6 +27,11 @@ configure<ApplicationExtension> {
         versionName = libs.versions.appVersionName.get()
     }
 
+    androidResources {
+        @Suppress("UnstableApiUsage")
+        generateLocaleConfig = true
+    }
+
     signingConfigs {
         getByName("debug") {
             keyAlias = "androiddebugkey"
