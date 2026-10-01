@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <!-- Debug-only entry point for an explicit ADB connection check. -->
+        <activity
+            android:name=".debug.WearConnectionProbeActivity"
+            android:exported="true"
+            android:taskAffinity="${applicationId}.wear.connection"
+            android:noHistory="true"
+            android:excludeFromRecents="true" />
+        <service
+            android:name=".debug.WearConnectionListenerService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.MESSAGE_RECEIVED" />
+                <data
+                    android:scheme="wear"
+                    android:host="*"
+                    android:path="/bitwarden/wear/connection/v1/pong" />
+            </intent-filter>
+        </service>
+    </application>
+</manifest>

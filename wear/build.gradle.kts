@@ -36,7 +36,7 @@ configure<ApplicationExtension> {
         getByName("debug") {
             keyAlias = "androiddebugkey"
             keyPassword = "android"
-            storeFile = file("../keystores/debug-bwa.keystore")
+            storeFile = file("../keystores/debug.keystore")
             storePassword = "android"
         }
     }
@@ -45,6 +45,11 @@ configure<ApplicationExtension> {
         debug {
             applicationIdSuffix = ".dev"
             signingConfig = signingConfigs.getByName("debug")
+        }
+        create("beta") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".beta"
+            matchingFallbacks += listOf("release")
         }
     }
 
@@ -59,6 +64,7 @@ configure<ApplicationExtension> {
 }
 
 dependencies {
+    implementation(project(":core"))
     implementation(project(":ui"))
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
@@ -73,4 +79,5 @@ dependencies {
     implementation(libs.androidx.splashscreen)
     implementation(libs.kotlinx.coroutines.core)
     debugImplementation(libs.androidx.compose.ui.tooling)
+    debugImplementation(libs.google.play.services.wearable)
 }

@@ -231,7 +231,10 @@ configurations.all {
     }
 }
 
+val standardDebugImplementation by configurations.creating
+
 dependencies {
+    standardDebugImplementation(libs.google.play.services.wearable)
     fun standardImplementation(dependencyNotation: Any) {
         add("standardImplementation", dependencyNotation)
     }

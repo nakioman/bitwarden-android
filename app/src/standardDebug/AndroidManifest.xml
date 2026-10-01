@@ -4,6 +4,17 @@
 
     <application tools:ignore="MissingApplicationIcon">
         <service
+            android:name="com.x8bit.bitwarden.data.wear.WearConnectionListenerService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.MESSAGE_RECEIVED" />
+                <data
+                    android:scheme="wear"
+                    android:host="*"
+                    android:path="/bitwarden/wear/connection/v1/ping" />
+            </intent-filter>
+        </service>
+        <service
             android:name="com.x8bit.bitwarden.data.push.BitwardenFirebaseMessagingService"
             android:exported="false">
             <intent-filter>
