@@ -41,6 +41,10 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -48,10 +52,18 @@ import androidx.compose.ui.unit.sp
 import androidx.wear.compose.foundation.pager.VerticalPager
 import androidx.wear.compose.foundation.pager.rememberPagerState
 import androidx.wear.compose.material3.AnimatedPage
+import androidx.wear.compose.material3.PagerScaffoldDefaults
+import androidx.wear.compose.material3.VerticalPageIndicator
+import androidx.wear.compose.material3.VerticalPagerScaffold
+import androidx.wear.compose.ui.tooling.preview.WearPreviewDevices
+import com.bitwarden.ui.platform.feature.settings.appearance.model.AppTheme
 import com.bitwarden.ui.platform.resource.BitwardenDrawable
 import com.bitwarden.ui.platform.resource.BitwardenString
 import com.bitwarden.ui.platform.theme.BitwardenTheme
 import com.x8bit.bitwarden.wear.R
+import java.time.Clock
+import java.time.Instant
+import java.time.ZoneOffset
 import java.util.Date
 import kotlinx.coroutines.delay
 
@@ -60,32 +72,45 @@ private const val FAVORITE_FEEDBACK_MILLIS = 850L
 private const val MILLIS_PER_SECOND = 1000L
 private const val CODE_GROUP_SIZE = 3
 private const val FAVORITE_INITIAL_SCALE = 0.4f
-private const val VIRTUAL_PAGE_COUNT = Int.MAX_VALUE
 
-/** Keeps the vertical swipe moving through all accounts, including either end. */
+/** Displays one vertical page per account. */
 @Composable
 internal fun VerificationCodeDetailPager(
     initialAccountIndex: Int,
     accounts: List<PreviewAccount>,
+    clock: Clock,
     favorites: Map<Int, Boolean>,
     onToggleFavorite: (Int) -> Unit,
 ) {
-    val initialPage = (VIRTUAL_PAGE_COUNT / 2 / accounts.size) * accounts.size
+    val colors = BitwardenTheme.colorScheme
     val pagerState = rememberPagerState(
-        initialPage = initialPage,
-        pageCount = { VIRTUAL_PAGE_COUNT },
+        initialPage = initialAccountIndex,
+        pageCount = { accounts.size },
     )
-    VerticalPager(state = pagerState) { page ->
-        // Swiping up advances the virtual page and selects the next account.
-        val accountIndex = Math.floorMod(initialAccountIndex + (page - initialPage), accounts.size)
-        AnimatedPage(pageIndex = page, pagerState = pagerState) {
-            VerificationCodeDetailScreen(
-                account = accounts[accountIndex],
-                accountIndex = accountIndex,
-                accountCount = accounts.size,
-                isFavorite = favorites[accountIndex] == true,
-                onToggleFavorite = { onToggleFavorite(accountIndex) },
+    VerticalPagerScaffold(
+        pagerState = pagerState,
+        pageIndicator = {
+            VerticalPageIndicator(
+                pagerState = pagerState,
+                selectedColor = colors.icon.secondary,
+                unselectedColor = colors.icon.primary,
+                backgroundColor = colors.background.primary,
             )
+        },
+    ) {
+        VerticalPager(
+            state = pagerState,
+            flingBehavior = PagerScaffoldDefaults.snapWithSpringFlingBehavior(pagerState),
+        ) { page ->
+            AnimatedPage(pageIndex = page, pagerState = pagerState) {
+                VerificationCodeDetailScreen(
+                    account = accounts[page],
+                    accountIndex = page,
+                    clock = clock,
+                    isFavorite = favorites[page] == true,
+                    onToggleFavorite = { onToggleFavorite(page) },
+                )
+            }
         }
     }
 }
@@ -96,7 +121,7 @@ internal fun VerificationCodeDetailPager(
 private fun VerificationCodeDetailScreen(
     account: PreviewAccount,
     accountIndex: Int,
-    accountCount: Int,
+    clock: Clock,
     isFavorite: Boolean,
     onToggleFavorite: () -> Unit,
 ) {
@@ -110,23 +135,39 @@ private fun VerificationCodeDetailScreen(
             feedbackFavorite = null
         }
     }
-    val nowSeconds = rememberPreviewTimeSeconds()
+    val nowSeconds = rememberPreviewTimeSeconds(clock)
     val secondsRemaining = (PREVIEW_CODE_PERIOD_SECONDS -
         nowSeconds % PREVIEW_CODE_PERIOD_SECONDS).toInt()
     val codeIndex = ((nowSeconds / PREVIEW_CODE_PERIOD_SECONDS) % account.codes.size).toInt()
     val clockText = DateFormat.getTimeFormat(context)
         .format(Date(nowSeconds * MILLIS_PER_SECOND))
+    val favoriteActionLabel = stringResource(
+        if (isFavorite) BitwardenString.unfavorite else BitwardenString.favorite,
+    )
+    val favoriteState = stringResource(
+        if (isFavorite) R.string.added_to_favorites else R.string.not_in_favorites,
+    )
+    val toggleFavorite = {
+        feedbackFavorite = !isFavorite
+        feedbackSequence++
+        onToggleFavorite()
+    }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(colors.background.primary)
+            .semantics(mergeDescendants = true) {
+                stateDescription = favoriteState
+                customActions = listOf(
+                    CustomAccessibilityAction(label = favoriteActionLabel) {
+                        toggleFavorite()
+                        true
+                    },
+                )
+            }
             .pointerInput(accountIndex, isFavorite) {
-                detectTapGestures(onDoubleTap = {
-                    feedbackFavorite = !isFavorite
-                    feedbackSequence++
-                    onToggleFavorite()
-                })
+                detectTapGestures(onDoubleTap = { toggleFavorite() })
             },
     ) {
         DetailContent(
@@ -136,25 +177,19 @@ private fun VerificationCodeDetailScreen(
             clockText = clockText,
             isFavorite = isFavorite,
         )
-        AccountPositionDots(
-            accountIndex = accountIndex,
-            accountCount = accountCount,
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .padding(end = 16.dp),
-        )
         FavoriteFeedback(feedbackFavorite = feedbackFavorite)
     }
 }
 
 @Composable
-private fun rememberPreviewTimeSeconds(): Long {
+private fun rememberPreviewTimeSeconds(clock: Clock): Long {
     val nowSeconds by produceState(
-        initialValue = System.currentTimeMillis() / MILLIS_PER_SECOND,
+        initialValue = clock.millis() / MILLIS_PER_SECOND,
+        key1 = clock,
     ) {
         while (true) {
             delay(MILLIS_PER_SECOND)
-            value = System.currentTimeMillis() / MILLIS_PER_SECOND
+            value = clock.millis() / MILLIS_PER_SECOND
         }
     }
     return nowSeconds
@@ -321,27 +356,16 @@ private fun CountdownRing(secondsRemaining: Int) {
     }
 }
 
+@WearPreviewDevices
 @Composable
-private fun AccountPositionDots(
-    accountIndex: Int,
-    accountCount: Int,
-    modifier: Modifier = Modifier,
-) {
-    val colors = BitwardenTheme.colorScheme
-    Column(
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(5.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        repeat(accountCount) { index ->
-            Box(
-                modifier = Modifier
-                    .size(if (index == accountIndex) 7.dp else 4.dp)
-                    .clip(CircleShape)
-                    .background(
-                        if (index == accountIndex) colors.icon.secondary else colors.icon.primary,
-                    ),
-            )
-        }
+private fun VerificationCodeDetailScreenPreview() {
+    BitwardenTheme(theme = AppTheme.DARK) {
+        VerificationCodeDetailPager(
+            initialAccountIndex = 0,
+            accounts = previewAccounts,
+            clock = Clock.fixed(Instant.parse("2026-09-30T10:08:12Z"), ZoneOffset.UTC),
+            favorites = emptyMap(),
+            onToggleFavorite = {},
+        )
     }
 }

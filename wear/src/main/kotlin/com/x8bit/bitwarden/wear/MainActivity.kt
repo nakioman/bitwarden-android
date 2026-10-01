@@ -25,6 +25,7 @@ import com.x8bit.bitwarden.wear.ui.NoAccountsScreen
 import com.x8bit.bitwarden.wear.ui.VerificationCodeDetailPager
 import com.x8bit.bitwarden.wear.ui.VerificationCodeListScreen
 import com.x8bit.bitwarden.wear.ui.previewAccounts
+import java.time.Clock
 
 private const val DETAIL_ENTER_DURATION_MILLIS = 220
 private const val DETAIL_ENTER_INITIAL_SCALE = 0.82f
@@ -43,6 +44,7 @@ class MainActivity : ComponentActivity() {
                     var selectedIndex by rememberSaveable { mutableIntStateOf(-1) }
                     val favorites = remember { mutableStateMapOf<Int, Boolean>() }
                     val listState = rememberLazyListState()
+                    val clock = remember { Clock.systemDefaultZone() }
                     BackHandler(enabled = selectedIndex >= 0) { selectedIndex = -1 }
                     if (selectedIndex < 0) {
                         VerificationCodeListScreen(
@@ -70,6 +72,7 @@ class MainActivity : ComponentActivity() {
                                     VerificationCodeDetailPager(
                                         initialAccountIndex = selectedIndex,
                                         accounts = previewAccounts,
+                                        clock = clock,
                                         favorites = favorites,
                                         onToggleFavorite = { index ->
                                             favorites[index] = favorites[index] != true

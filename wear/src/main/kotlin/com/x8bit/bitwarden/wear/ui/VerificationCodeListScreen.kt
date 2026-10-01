@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -30,6 +31,8 @@ import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.wear.compose.ui.tooling.preview.WearPreviewDevices
+import com.bitwarden.ui.platform.feature.settings.appearance.model.AppTheme
 import com.bitwarden.ui.platform.theme.BitwardenTheme
 import com.x8bit.bitwarden.wear.R
 
@@ -63,7 +66,7 @@ private fun DemoAccountRow(account: PreviewAccount, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(44.dp)
+            .height(48.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(colors.background.secondary)
             .clickable(onClick = onClick)
@@ -137,4 +140,51 @@ internal val previewAccounts = listOf(
         initial = "D",
         codes = listOf("805214", "370619"),
     ),
+    PreviewAccount(
+        name = "GitLab",
+        username = "usuario@example.com",
+        initial = "G",
+        codes = listOf("672408", "193756"),
+    ),
+    PreviewAccount(
+        name = "Amazon Web Services",
+        username = "trabajo@example.com",
+        initial = "A",
+        codes = listOf("329815", "761204"),
+    ),
+    PreviewAccount(
+        name = "Dropbox",
+        username = "usuario@example.com",
+        initial = "D",
+        codes = listOf("458903", "012746"),
+    ),
+    PreviewAccount(
+        name = "Reddit",
+        username = "usuario@example.com",
+        initial = "R",
+        codes = listOf("740362", "385019"),
+    ),
+    PreviewAccount(
+        name = "Slack workspace de desarrollo",
+        username = "trabajo.muy.largo@example.com",
+        initial = "S",
+        codes = listOf("916427", "204583"),
+    ),
+    PreviewAccount(
+        name = "Cloudflare",
+        username = "usuario@example.com",
+        initial = "C",
+        codes = listOf("583104", "726918"),
+    ),
 )
+
+@WearPreviewDevices
+@Composable
+private fun VerificationCodeListScreenPreview() {
+    BitwardenTheme(theme = AppTheme.DARK) {
+        VerificationCodeListScreen(
+            listState = rememberLazyListState(),
+            onAccountClick = {},
+        )
+    }
+}

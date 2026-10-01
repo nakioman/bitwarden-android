@@ -17,6 +17,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.wear.compose.ui.tooling.preview.WearPreviewDevices
+import com.bitwarden.ui.platform.feature.settings.appearance.model.AppTheme
 import com.bitwarden.ui.platform.theme.BitwardenTheme
 import com.x8bit.bitwarden.wear.R
 
@@ -46,5 +48,13 @@ internal fun NoAccountsScreen() {
             style = BitwardenTheme.typography.titleMedium,
             textAlign = TextAlign.Center,
         )
+    }
+}
+
+@WearPreviewDevices
+@Composable
+private fun NoAccountsScreenPreview() {
+    BitwardenTheme(theme = AppTheme.DARK) {
+        NoAccountsScreen()
     }
 }
