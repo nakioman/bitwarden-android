@@ -88,6 +88,7 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.google.play.services.wearable)
 
+    testImplementation(testFixtures(project(":core")))
     testImplementation(testFixtures(project(":ui")))
     testImplementation(platform(libs.junit.bom))
     testRuntimeOnly(libs.junit.platform.launcher)

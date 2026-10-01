@@ -1,6 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application>
+        <!-- Synthetic data only; separate from companion keys and snapshots. -->
+        <activity
+            android:name=".debug.WatchStorageProbeActivity"
+            android:exported="true"
+            android:taskAffinity="${applicationId}.wear.storage.probe"
+            android:noHistory="true"
+            android:excludeFromRecents="true" />
         <!-- Debug-only entry point for an explicit ADB connection check. -->
         <activity
             android:name=".debug.WearConnectionProbeActivity"
