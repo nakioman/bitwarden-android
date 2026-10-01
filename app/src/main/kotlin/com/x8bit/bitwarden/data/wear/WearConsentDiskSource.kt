@@ -18,4 +18,6 @@ data class WearConsent(
     val deviceId: String,
     val deviceName: String,
     val isAuthorized: Boolean,
+    /** Pinned X.509 key encoded as Base64; retained when consent is revoked. */
+    val publicKey: String? = null,
 )

@@ -23,12 +23,14 @@ class WearConsentManagerTest {
     private val locks = mockk<VaultLockManager>()
     private val devices = mockk<WearDeviceSource>()
     private val disk = mockk<WearConsentDiskSource>()
+    private val keys = mockk<WearKeySource>()
     private val manager = WearConsentManagerImpl(
-        devices, disk, auth, locks, FakeDispatcherManager(),
+        devices, disk, auth, locks, FakeDispatcherManager(), keys,
     )
 
     @BeforeEach
     fun setUp() {
+        coEvery { keys.getPublicKey("watch") } returns Result.success(byteArrayOf(1, 2, 3))
         every { devices.isSupported } returns true
         every { locks.isVaultUnlocked("user") } returns true
         coEvery { devices.getDevices() } returns Result.success(
@@ -64,7 +66,9 @@ class WearConsentManagerTest {
             WearConsentResult.Success(listOf(WearConsentDevice("watch", "Watch", true, true))),
             manager.setConsent("user", "watch", true),
         )
-        verify { disk.storeConsents(listOf(other, WearConsent("user", "watch", "Watch", true))) }
+        verify {
+            disk.storeConsents(listOf(other, WearConsent("user", "watch", "Watch", true, "AQID")))
+        }
     }
 
     @Test
@@ -115,5 +119,73 @@ class WearConsentManagerTest {
         every { disk.getConsents() } returns Result.failure(IOException())
         assertEquals(WearConsentResult.Error, manager.setConsent("user", "watch", true))
         verify(exactly = 0) { disk.storeConsents(any()) }
+    }
+
+    @Test
+    fun `a changed pinned key is rejected without overwriting consent`() = runTest {
+        every { disk.getConsents() } returns Result.success(
+            listOf(WearConsent("user", "watch", "Watch", true, "old-key")),
+        )
+        assertEquals(WearConsentResult.Error, manager.getDevices("user"))
+        verify(exactly = 0) { disk.storeConsents(any()) }
+    }
+
+    @Test
+    fun `key discovery failure never grants new consent`() = runTest {
+        coEvery { keys.getPublicKey("watch") } returns Result.failure(IOException())
+        assertEquals(WearConsentResult.Error, manager.setConsent("user", "watch", true))
+        verify(exactly = 0) { disk.storeConsents(any()) }
+    }
+
+    @Test
+    fun `an account switch during key exchange cannot save the key`() = runTest {
+        coEvery { keys.getPublicKey("watch") } coAnswers {
+            users.value = mockk { every { activeUserId } returns "other" }
+            Result.success(byteArrayOf(1, 2, 3))
+        }
+        assertEquals(WearConsentResult.VaultLocked, manager.setConsent("user", "watch", true))
+        verify(exactly = 0) { disk.storeConsents(any()) }
+    }
+
+    @Test
+    fun `locking the vault during key exchange cannot save the key`() = runTest {
+        coEvery { keys.getPublicKey("watch") } coAnswers {
+            every { locks.isVaultUnlocked("user") } returns false
+            Result.success(byteArrayOf(1, 2, 3))
+        }
+        assertEquals(WearConsentResult.VaultLocked, manager.setConsent("user", "watch", true))
+        verify(exactly = 0) { disk.storeConsents(any()) }
+    }
+
+    @Test
+    fun `refresh pins an existing consent but does not enroll unauthorized devices`() = runTest {
+        assertEquals(
+            WearConsentResult.Success(listOf(WearConsentDevice("watch", "Watch", false, true))),
+            manager.getDevices("user"),
+        )
+        coVerify(exactly = 0) { keys.getPublicKey(any()) }
+        every { disk.getConsents() } returns Result.success(
+            listOf(WearConsent("user", "watch", "Watch", true)),
+        )
+        assertEquals(
+            WearConsentResult.Success(listOf(WearConsentDevice("watch", "Watch", true, true))),
+            manager.getDevices("user"),
+        )
+        verify {
+            disk.storeConsents(listOf(WearConsent("user", "watch", "Watch", true, "AQID")))
+        }
+    }
+
+    @Test
+    fun `revocation retains the pinned key without requiring the watch`() = runTest {
+        every { disk.getConsents() } returns Result.success(
+            listOf(WearConsent("user", "watch", "Watch", true, "AQID")),
+        )
+        coEvery { devices.getDevices() } returns Result.failure(IOException())
+        manager.setConsent("user", "watch", false)
+        verify {
+            disk.storeConsents(listOf(WearConsent("user", "watch", "Watch", false, "AQID")))
+        }
+        coVerify(exactly = 0) { keys.getPublicKey(any()) }
     }
 }

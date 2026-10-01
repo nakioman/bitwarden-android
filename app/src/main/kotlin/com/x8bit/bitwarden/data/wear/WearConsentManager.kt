@@ -1,8 +1,11 @@
 package com.x8bit.bitwarden.data.wear
 
-/** Records explicit consent; this does not enroll encryption keys or transfer verification data. */
+/** Records explicit consent and pins public keys without transferring verification data. */
 interface WearConsentManager {
-    /** Loads devices for [userId] only while it is the active, unlocked account. */
+    /**
+     * Loads devices for the active, unlocked [userId] and verifies reachable authorized keys.
+     * Changed keys fail closed; existing authorization is retained for retry or revocation.
+     */
     suspend fun getDevices(userId: String): WearConsentResult
 
     /** Records [enabled] for a device after revalidating the account and device. */

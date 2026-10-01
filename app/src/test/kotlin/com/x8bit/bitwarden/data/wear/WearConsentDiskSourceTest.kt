@@ -4,6 +4,7 @@ import android.content.SharedPreferences
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.serialization.json.Json
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -31,5 +32,15 @@ class WearConsentDiskSourceTest {
         every { editor.commit() } returns false
         every { preferences.edit() } returns editor
         assertTrue(source.storeConsents(emptyList()).isFailure)
+    }
+
+    @Test
+    fun `existing consent records migrate without silently inventing a key`() {
+        every { preferences.getString(any(), null) } returns
+            """[{"userId":"user","deviceId":"watch","deviceName":"Watch","isAuthorized":true}]"""
+        assertEquals(
+            listOf(WearConsent("user", "watch", "Watch", true)),
+            source.getConsents().getOrThrow(),
+        )
     }
 }

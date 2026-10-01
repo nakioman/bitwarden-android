@@ -10,6 +10,7 @@ import com.x8bit.bitwarden.data.wear.WearConsentDiskSourceImpl
 import com.x8bit.bitwarden.data.wear.WearConsentManager
 import com.x8bit.bitwarden.data.wear.WearConsentManagerImpl
 import com.x8bit.bitwarden.data.wear.WearDeviceSource
+import com.x8bit.bitwarden.data.wear.WearKeySource
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -38,7 +39,8 @@ object WearConsentModule {
         authRepository: AuthRepository,
         vaultLockManager: VaultLockManager,
         dispatcherManager: DispatcherManager,
+        keySource: WearKeySource,
     ): WearConsentManager = WearConsentManagerImpl(
-        deviceSource, diskSource, authRepository, vaultLockManager, dispatcherManager,
+        deviceSource, diskSource, authRepository, vaultLockManager, dispatcherManager, keySource,
     )
 }
