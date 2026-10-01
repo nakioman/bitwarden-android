@@ -15,10 +15,15 @@ import com.bitwarden.annotation.OmitFromCoverage
 import com.bitwarden.ui.platform.base.util.composableWithRootPushTransitions
 import com.bitwarden.ui.platform.base.util.composableWithSlideTransitions
 import com.bitwarden.ui.platform.util.ParcelableRouteSerializer
+import com.x8bit.bitwarden.data.wear.WearSyncAvailability
+import com.x8bit.bitwarden.ui.platform.feature.premium.plan.navigateToPlan
+import com.x8bit.bitwarden.ui.platform.feature.premium.plan.planDestination
 import com.x8bit.bitwarden.ui.platform.feature.settings.about.aboutDestination
 import com.x8bit.bitwarden.ui.platform.feature.settings.about.navigateToAbout
 import com.x8bit.bitwarden.ui.platform.feature.settings.accountsecurity.accountSecurityDestination
 import com.x8bit.bitwarden.ui.platform.feature.settings.accountsecurity.navigateToAccountSecurity
+import com.x8bit.bitwarden.ui.platform.feature.settings.accountsecurity.wearsync.navigateToWearSync
+import com.x8bit.bitwarden.ui.platform.feature.settings.accountsecurity.wearsync.wearSyncDestination
 import com.x8bit.bitwarden.ui.platform.feature.settings.appearance.appearanceDestination
 import com.x8bit.bitwarden.ui.platform.feature.settings.appearance.navigateToAppearance
 import com.x8bit.bitwarden.ui.platform.feature.settings.autofill.autoFillDestination
@@ -35,8 +40,6 @@ import com.x8bit.bitwarden.ui.platform.feature.settings.other.navigateToOther
 import com.x8bit.bitwarden.ui.platform.feature.settings.other.otherDestination
 import com.x8bit.bitwarden.ui.platform.feature.settings.vault.navigateToVaultSettings
 import com.x8bit.bitwarden.ui.platform.feature.settings.vault.vaultSettingsDestination
-import com.x8bit.bitwarden.ui.platform.feature.premium.plan.navigateToPlan
-import com.x8bit.bitwarden.ui.platform.feature.premium.plan.planDestination
 import com.x8bit.bitwarden.ui.vault.feature.importitems.importItemsDestination
 import kotlinx.parcelize.Parcelize
 import kotlinx.serialization.Serializable
@@ -136,6 +139,7 @@ fun NavGraphBuilder.settingsGraph(
                 onNavigateBack = {},
                 onNavigateToAbout = { navController.navigateToAbout(isPreAuth = false) },
                 onNavigateToAccountSecurity = { navController.navigateToAccountSecurity() },
+                onNavigateToWearSync = { navController.navigateToWearSync() },
                 onNavigateToAppearance = { navController.navigateToAppearance(isPreAuth = false) },
                 onNavigateToAutoFill = { navController.navigateToAutoFill() },
                 onNavigateToOther = { navController.navigateToOther(isPreAuth = false) },
@@ -156,6 +160,9 @@ fun NavGraphBuilder.settingsGraph(
             onNavigateToSetupUnlockScreen = onNavigateToSetupUnlockScreen,
             onNavigateToManageDevices = onNavigateToManageDevices,
         )
+        if (WearSyncAvailability.isEnabled) {
+            wearSyncDestination(onNavigateBack = { navController.popBackStack() })
+        }
         appearanceDestination(
             isPreAuth = false,
             onNavigateBack = { navController.popBackStack() },

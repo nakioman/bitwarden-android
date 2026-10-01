@@ -88,6 +88,29 @@ class SettingsViewModelTest : BaseViewModelTest() {
     }
 
     @Test
+    fun `on Wear OS sync click should emit NavigateWearSync`() = runTest {
+        val viewModel = createViewModel()
+        viewModel.eventFlow.test {
+            viewModel.trySendAction(SettingsAction.SettingsClick(Settings.WEAR_OS_SYNC))
+            assertEquals(SettingsEvent.NavigateWearSync, awaitItem())
+        }
+    }
+
+    @Test
+    fun `Wear OS sync should appear immediately after Account security`() {
+        val rows = createViewModel().stateFlow.value.settingRows
+        assertEquals(Settings.WEAR_OS_SYNC, rows[rows.indexOf(Settings.ACCOUNT_SECURITY) + 1])
+    }
+
+    @Test
+    fun `Wear OS sync should be hidden before authentication`() {
+        assertFalse(
+            createViewModel(isPreAuth = true)
+                .stateFlow.value.settingRows.contains(Settings.WEAR_OS_SYNC),
+        )
+    }
+
+    @Test
     fun `on SettingsClick with APPEARANCE should emit NavigateAppearance`() = runTest {
         val viewModel = createViewModel()
         viewModel.eventFlow.test {

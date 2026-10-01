@@ -15,6 +15,7 @@ import com.x8bit.bitwarden.data.billing.manager.UPGRADED_TO_PREMIUM_LEARN_MORE_U
 import com.x8bit.bitwarden.data.platform.manager.FirstTimeActionManager
 import com.x8bit.bitwarden.data.platform.manager.SpecialCircumstanceManager
 import com.x8bit.bitwarden.data.platform.manager.model.SpecialCircumstance
+import com.x8bit.bitwarden.data.wear.WearSyncAvailability
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
@@ -168,6 +169,8 @@ class SettingsViewModel @Inject constructor(
                 sendEvent(SettingsEvent.NavigateAccountSecurity)
             }
 
+            Settings.WEAR_OS_SYNC -> sendEvent(SettingsEvent.NavigateWearSync)
+
             Settings.AUTO_FILL -> {
                 sendEvent(SettingsEvent.NavigateAutoFill)
             }
@@ -229,6 +232,7 @@ data class SettingsState(
         .filter { setting ->
             when (setting) {
                 Settings.ACCOUNT_SECURITY -> !isPreAuth
+                Settings.WEAR_OS_SYNC -> !isPreAuth && WearSyncAvailability.isEnabled
                 Settings.AUTO_FILL -> !isPreAuth
                 Settings.VAULT -> !isPreAuth
                 Settings.APPEARANCE -> true
@@ -264,6 +268,9 @@ sealed class SettingsEvent {
      * Navigate to the account security screen.
      */
     data object NavigateAccountSecurity : SettingsEvent()
+
+    /** Opens Wear OS companion consent settings. */
+    data object NavigateWearSync : SettingsEvent()
 
     /**
      * Navigate to the account security screen via shortcut.
@@ -381,6 +388,11 @@ enum class Settings(
         text = BitwardenString.account_security.asText(),
         vectorIconRes = BitwardenDrawable.ic_locked,
         testTag = "AccountSecuritySettingsButton",
+    ),
+    WEAR_OS_SYNC(
+        text = BitwardenString.wear_os_sync.asText(),
+        vectorIconRes = BitwardenDrawable.ic_watch,
+        testTag = "WearOsSyncSettingsButton",
     ),
     AUTO_FILL(
         text = BitwardenString.autofill_noun.asText(),

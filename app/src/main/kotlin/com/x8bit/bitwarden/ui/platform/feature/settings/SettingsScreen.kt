@@ -55,6 +55,7 @@ fun SettingsScreen(
     onNavigateToOther: () -> Unit,
     onNavigateToVault: () -> Unit,
     onNavigateToPlan: () -> Unit,
+    onNavigateToWearSync: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
     intentManager: IntentManager = LocalIntentManager.current,
 ) {
@@ -64,6 +65,7 @@ fun SettingsScreen(
             SettingsEvent.NavigateBack -> onNavigateBack()
             SettingsEvent.NavigateAbout -> onNavigateToAbout()
             SettingsEvent.NavigateAccountSecurity -> onNavigateToAccountSecurity()
+            SettingsEvent.NavigateWearSync -> onNavigateToWearSync()
             SettingsEvent.NavigateAppearance -> onNavigateToAppearance()
             SettingsEvent.NavigateAutoFill -> onNavigateToAutoFill()
             SettingsEvent.NavigateOther -> onNavigateToOther()
