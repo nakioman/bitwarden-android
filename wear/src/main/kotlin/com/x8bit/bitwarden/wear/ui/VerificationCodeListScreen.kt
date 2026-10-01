@@ -2,6 +2,7 @@ package com.x8bit.bitwarden.wear.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,7 +16,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -33,10 +35,14 @@ import com.x8bit.bitwarden.wear.R
 
 /** A visual prototype of the verification-code account list. */
 @Composable
-internal fun VerificationCodeListScreen() {
+internal fun VerificationCodeListScreen(
+    listState: LazyListState,
+    onAccountClick: (Int) -> Unit,
+) {
     val colors = BitwardenTheme.colorScheme
     val typography = BitwardenTheme.typography
     LazyColumn(
+        state = listState,
         modifier = Modifier
             .fillMaxSize()
             .background(colors.background.primary),
@@ -52,14 +58,14 @@ internal fun VerificationCodeListScreen() {
                 textAlign = TextAlign.Center,
             )
         }
-        items(demoAccounts) { account ->
-            DemoAccountRow(account = account)
+        itemsIndexed(previewAccounts) { index, account ->
+            DemoAccountRow(account = account, onClick = { onAccountClick(index) })
         }
     }
 }
 
 @Composable
-private fun DemoAccountRow(account: DemoAccount) {
+private fun DemoAccountRow(account: PreviewAccount, onClick: () -> Unit) {
     val colors = BitwardenTheme.colorScheme
     val typography = BitwardenTheme.typography
     Row(
@@ -68,6 +74,7 @@ private fun DemoAccountRow(account: DemoAccount) {
             .height(40.dp)
             .clip(RoundedCornerShape(14.dp))
             .background(colors.background.secondary)
+            .clickable(onClick = onClick)
             .padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -106,19 +113,36 @@ private fun DemoAccountRow(account: DemoAccount) {
     }
 }
 
-private data class DemoAccount(
+internal data class PreviewAccount(
     val name: String,
     val username: String,
     val initial: String,
+    val codes: List<String>,
 )
 
-private val demoAccounts = listOf(
-    DemoAccount(name = "GitHub", username = "usuario@example.com", initial = "G"),
-    DemoAccount(name = "Google", username = "usuario.muy.largo@example.com", initial = "G"),
-    DemoAccount(
+internal val previewAccounts = listOf(
+    PreviewAccount(
+        name = "GitHub",
+        username = "usuario@example.com",
+        initial = "G",
+        codes = listOf("287461", "645092"),
+    ),
+    PreviewAccount(
+        name = "Google",
+        username = "usuario.muy.largo@example.com",
+        initial = "G",
+        codes = listOf("134982", "781530"),
+    ),
+    PreviewAccount(
         name = "Microsoft Entra ID empresarial",
         username = "usuario@example.com",
         initial = "M",
+        codes = listOf("523761", "094216"),
     ),
-    DemoAccount(name = "Discord", username = "usuario@example.com", initial = "D"),
+    PreviewAccount(
+        name = "Discord",
+        username = "usuario@example.com",
+        initial = "D",
+        codes = listOf("805214", "370619"),
+    ),
 )

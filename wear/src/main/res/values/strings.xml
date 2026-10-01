@@ -2,4 +2,5 @@
 <resources>
     <string name="accounts">Accounts</string>
     <string name="no_accounts_available">No accounts available</string>
+    <string name="time_remaining_seconds">%1$d s</string>
 </resources>

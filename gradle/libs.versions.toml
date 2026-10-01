@@ -28,6 +28,7 @@ androidxNavigation = "2.9.8"
 androidxRoom = "2.8.4"
 androidxSecurityCrypto = "1.1.0"
 androidxSplash = "1.2.0"
+androidxWearCompose = "1.7.0"
 androidxWork = "2.11.2"
 bitwardenSdk = "3.0.0-9018-167d44ec"
 crashlytics = "3.0.8"
@@ -98,6 +99,8 @@ androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "androidx
 androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "androidxRoom" }
 androidx-security-crypto = { module = "androidx.security:security-crypto", version.ref = "androidxSecurityCrypto" }
 androidx-splashscreen = { module = "androidx.core:core-splashscreen", version.ref = "androidxSplash" }
+androidx-wear-compose-foundation = { module = "androidx.wear.compose:compose-foundation", version.ref = "androidxWearCompose" }
+androidx-wear-compose-material3 = { module = "androidx.wear.compose:compose-material3", version.ref = "androidxWearCompose" }
 androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "androidxWork" }
 bitwarden-sdk = { module = "com.bitwarden:sdk-android", version.ref = "bitwardenSdk" }
 bumptech-glide = { module = "com.github.bumptech.glide:compose", version.ref = "glideCompose" }
