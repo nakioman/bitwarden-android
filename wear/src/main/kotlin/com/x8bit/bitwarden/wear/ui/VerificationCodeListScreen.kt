@@ -26,10 +26,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.semantics.paneTitle
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.bitwarden.ui.platform.theme.BitwardenTheme
 import com.x8bit.bitwarden.wear.R
 
@@ -40,24 +40,16 @@ internal fun VerificationCodeListScreen(
     onAccountClick: (Int) -> Unit,
 ) {
     val colors = BitwardenTheme.colorScheme
-    val typography = BitwardenTheme.typography
+    val accountsTitle = stringResource(R.string.accounts)
     LazyColumn(
         state = listState,
         modifier = Modifier
             .fillMaxSize()
-            .background(colors.background.primary),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(5.dp),
+            .background(colors.background.primary)
+            .semantics { paneTitle = accountsTitle },
+        contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 24.dp, bottom = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        item {
-            Text(
-                text = stringResource(R.string.accounts),
-                modifier = Modifier.fillMaxWidth(),
-                color = colors.text.primary,
-                style = typography.bodyMediumEmphasis,
-                textAlign = TextAlign.Center,
-            )
-        }
         itemsIndexed(previewAccounts) { index, account ->
             DemoAccountRow(account = account, onClick = { onAccountClick(index) })
         }
@@ -71,8 +63,8 @@ private fun DemoAccountRow(account: PreviewAccount, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(40.dp)
-            .clip(RoundedCornerShape(14.dp))
+            .height(44.dp)
+            .clip(RoundedCornerShape(16.dp))
             .background(colors.background.secondary)
             .clickable(onClick = onClick)
             .padding(horizontal = 8.dp),
@@ -80,7 +72,7 @@ private fun DemoAccountRow(account: PreviewAccount, onClick: () -> Unit) {
     ) {
         Box(
             modifier = Modifier
-                .size(26.dp)
+                .size(30.dp)
                 .clip(CircleShape)
                 .background(colors.filledButton.background),
             contentAlignment = Alignment.Center,
@@ -97,7 +89,7 @@ private fun DemoAccountRow(account: PreviewAccount, onClick: () -> Unit) {
                 text = account.name,
                 modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE),
                 color = colors.text.primary,
-                style = typography.bodyMediumEmphasis.copy(fontSize = 12.sp, lineHeight = 14.sp),
+                style = typography.titleSmall,
                 maxLines = 1,
                 overflow = TextOverflow.Clip,
             )
@@ -105,7 +97,7 @@ private fun DemoAccountRow(account: PreviewAccount, onClick: () -> Unit) {
                 text = account.username,
                 modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE),
                 color = colors.text.secondary,
-                style = typography.bodySmall.copy(fontSize = 10.sp, lineHeight = 12.sp),
+                style = typography.bodySmall,
                 maxLines = 1,
                 overflow = TextOverflow.Clip,
             )

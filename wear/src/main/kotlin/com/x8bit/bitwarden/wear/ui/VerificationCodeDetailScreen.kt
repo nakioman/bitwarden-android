@@ -13,12 +13,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -133,13 +134,16 @@ private fun VerificationCodeDetailScreen(
             code = account.codes[codeIndex],
             secondsRemaining = secondsRemaining,
             clockText = clockText,
+            isFavorite = isFavorite,
         )
         AccountPositionDots(
             accountIndex = accountIndex,
             accountCount = accountCount,
-            modifier = Modifier.align(Alignment.CenterEnd).padding(end = 10.dp),
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .padding(end = 16.dp),
         )
-        FavoriteIndicators(isFavorite = isFavorite, feedbackFavorite = feedbackFavorite)
+        FavoriteFeedback(feedbackFavorite = feedbackFavorite)
     }
 }
 
@@ -157,18 +161,8 @@ private fun rememberPreviewTimeSeconds(): Long {
 }
 
 @Composable
-private fun BoxScope.FavoriteIndicators(isFavorite: Boolean, feedbackFavorite: Boolean?) {
+private fun BoxScope.FavoriteFeedback(feedbackFavorite: Boolean?) {
     val colors = BitwardenTheme.colorScheme
-    if (isFavorite) {
-        Icon(
-            painter = painterResource(BitwardenDrawable.ic_favorite_full),
-            contentDescription = stringResource(BitwardenString.favorite),
-            tint = colors.icon.secondary,
-            modifier = Modifier.align(Alignment.TopStart)
-                .padding(start = 27.dp, top = 47.dp)
-                .size(15.dp),
-        )
-    }
     AnimatedVisibility(
         visible = feedbackFavorite != null,
         modifier = Modifier.align(Alignment.Center),
@@ -200,21 +194,45 @@ private fun DetailContent(
     code: String,
     secondsRemaining: Int,
     clockText: String,
+    isFavorite: Boolean,
 ) {
     val colors = BitwardenTheme.colorScheme
     val typography = BitwardenTheme.typography
     Column(
-        modifier = Modifier.fillMaxSize().padding(top = 10.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
     ) {
         Text(
             text = clockText,
             color = colors.text.primary,
-            style = typography.bodySmall.copy(fontSize = 10.sp, lineHeight = 12.sp),
+            style = typography.labelMedium,
         )
         Spacer(modifier = Modifier.height(4.dp))
+        AccountHeading(account = account, isFavorite = isFavorite)
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = code.chunked(CODE_GROUP_SIZE).joinToString(" "),
+            color = colors.text.codeBlue,
+            style = typography.sensitiveInfoMedium.copy(fontSize = 30.sp, lineHeight = 34.sp),
+            textAlign = TextAlign.Center,
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        CountdownRing(secondsRemaining = secondsRemaining)
+    }
+}
+
+@Composable
+private fun AccountHeading(account: PreviewAccount, isFavorite: Boolean) {
+    val colors = BitwardenTheme.colorScheme
+    val typography = BitwardenTheme.typography
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
-            modifier = Modifier.size(28.dp).clip(CircleShape)
+            modifier = Modifier
+                .size(28.dp)
+                .clip(CircleShape)
                 .background(colors.filledButton.background),
             contentAlignment = Alignment.Center,
         ) {
@@ -225,32 +243,42 @@ private fun DetailContent(
             )
         }
         Spacer(modifier = Modifier.height(2.dp))
-        Text(
-            text = account.name,
-            modifier = Modifier.widthIn(max = 140.dp).basicMarquee(iterations = Int.MAX_VALUE),
-            color = colors.text.primary,
-            style = typography.bodyMediumEmphasis.copy(fontSize = 14.sp, lineHeight = 16.sp),
-            maxLines = 1,
-            overflow = TextOverflow.Clip,
-            textAlign = TextAlign.Center,
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            if (isFavorite) {
+                Icon(
+                    painter = painterResource(BitwardenDrawable.ic_favorite_full),
+                    contentDescription = stringResource(BitwardenString.favorite),
+                    tint = colors.icon.secondary,
+                    modifier = Modifier.size(14.dp),
+                )
+            }
+            Text(
+                text = account.name,
+                modifier = Modifier
+                    .weight(1f)
+                    .basicMarquee(iterations = Int.MAX_VALUE),
+                color = colors.text.primary,
+                style = typography.titleSmall,
+                maxLines = 1,
+                overflow = TextOverflow.Clip,
+                textAlign = TextAlign.Center,
+            )
+        }
         Text(
             text = account.username,
-            modifier = Modifier.widthIn(max = 140.dp).basicMarquee(iterations = Int.MAX_VALUE),
+            modifier = Modifier
+                .fillMaxWidth()
+                .basicMarquee(iterations = Int.MAX_VALUE),
             color = colors.text.secondary,
-            style = typography.bodySmall.copy(fontSize = 10.sp, lineHeight = 12.sp),
+            style = typography.bodySmall,
             maxLines = 1,
             overflow = TextOverflow.Clip,
-        )
-        Spacer(modifier = Modifier.height(6.dp))
-        Text(
-            text = code.chunked(CODE_GROUP_SIZE).joinToString(" "),
-            color = colors.text.codeBlue,
-            style = typography.sensitiveInfoMedium.copy(fontSize = 30.sp, lineHeight = 34.sp),
             textAlign = TextAlign.Center,
         )
-        Spacer(modifier = Modifier.height(4.dp))
-        CountdownRing(secondsRemaining = secondsRemaining)
     }
 }
 
