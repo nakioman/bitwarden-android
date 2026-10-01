@@ -1452,4 +1452,6 @@ Do you want to switch to this account?</string>
     <string name="turn_off">Turn off</string>
     <string name="turn_off_biometric_question">Turn off biometrics?</string>
     <string name="unlocking_will_require_your_master_password">Unlocking will require your master password. You can turn biometrics back on in Settings.</string>
+    <string name="set_up_a_screen_lock_on_your_watch_to_use_bitwarden">Set up a screen lock on your watch to use Bitwarden.</string>
+    <string name="unlock_your_watch_to_use_bitwarden">Unlock your watch to use Bitwarden.</string>
 </resources>

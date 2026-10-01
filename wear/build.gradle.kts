@@ -3,6 +3,9 @@ import com.android.build.api.dsl.ApplicationExtension
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose.compiler)
+    alias(libs.plugins.hilt)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.kotlin.parcelize)
 }
 
 // Keep Wear OS APK codes distinct from phone APK codes in the same Play listing.
@@ -67,6 +70,10 @@ dependencies {
     implementation(project(":core"))
     implementation(project(":ui"))
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.hilt.navigation.compose)
+    implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.google.hilt.android)
+    ksp(libs.google.hilt.compiler)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.animation)
     implementation(libs.androidx.compose.foundation)
@@ -80,4 +87,12 @@ dependencies {
     implementation(libs.kotlinx.coroutines.core)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.google.play.services.wearable)
+
+    testImplementation(testFixtures(project(":ui")))
+    testImplementation(platform(libs.junit.bom))
+    testRuntimeOnly(libs.junit.platform.launcher)
+    testImplementation(libs.junit.jupiter)
+    testImplementation(libs.mockk.mockk)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.square.turbine)
 }
