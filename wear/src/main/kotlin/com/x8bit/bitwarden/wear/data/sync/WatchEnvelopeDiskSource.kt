@@ -1,6 +1,6 @@
 package com.x8bit.bitwarden.wear.data.sync
 
-/** Stores ciphertext only, outside Android backup locations. */
+/** Stores ciphertext and non-secret framing metadata, outside Android backup locations. */
 interface WatchEnvelopeDiskSource {
     /** Reads a bounded envelope or returns null when no snapshot exists. */
     fun read(): Result<ByteArray?>

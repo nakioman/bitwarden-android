@@ -1,6 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application>
+        <activity
+            android:name=".debug.WatchSnapshotReadProbeActivity"
+            android:exported="true"
+            android:taskAffinity="${applicationId}.wear.snapshot.probe"
+            android:noHistory="true"
+            android:excludeFromRecents="true" />
+        <service
+            android:name=".debug.WearSnapshotProbeService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.REQUEST_RECEIVED" />
+                <data
+                    android:scheme="wear"
+                    android:host="*"
+                    android:pathPrefix="/bitwarden/wear/probe/snapshot/v1/" />
+            </intent-filter>
+        </service>
         <service
             android:name=".debug.WearKeyListenerService"
             android:exported="true">
