@@ -27,7 +27,7 @@ output-reports:
 
 comments:
   active: true
-  excludes: [ '**/test/**', '**/testStandard/**', '**/testFdroid/**', '**/androidTest/**', '**/commonTest/**', '**/jvmTest/**', '**/jsTest/**', '**/iosTest/**', '**ServiceImpl.kt', '**/testFixtures/**' ]
+  excludes: [ '**/test/**', '**/testStandard/**', '**/testFdroid/**', '**/testDebug/**', '**/androidTest/**', '**/commonTest/**', '**/jvmTest/**', '**/jsTest/**', '**/iosTest/**', '**ServiceImpl.kt', '**/testFixtures/**' ]
   AbsentOrWrongFileLicense:
     active: false
     licenseTemplateFile: 'license.template'
@@ -552,7 +552,7 @@ style:
     maxJumpCount: 1
   MagicNumber:
     active: true
-    excludes: [ '**/test/**', '**/androidTest/**', '**/commonTest/**', '**/jvmTest/**', '**/jsTest/**', '**/iosTest/**' ]
+    excludes: [ '**/test/**', '**/testDebug/**', '**/androidTest/**', '**/commonTest/**', '**/jvmTest/**', '**/jsTest/**', '**/iosTest/**' ]
     ignoreNumbers: [ '-1', '0', '0.5', '1', '2' ]
     ignoreHashCodeFunction: true
     ignorePropertyDeclaration: false
