@@ -10,15 +10,22 @@ import java.security.ProviderException
 
 private const val OUTBOX_KEY = "wearEncryptedOutboxV1"
 
-/** Commits ciphertext and non-secret routing metadata using keystore-encrypted preferences. */
+/**
+ * Commits ciphertext and non-secret routing metadata using keystore-encrypted preferences.
+ *
+ * @property encryptedPreferences Keystore-encrypted storage.
+ * @property json Ledger serializer.
+ * @property storageKey Separates production state from isolated synthetic tests.
+ */
 class WearOutboxDiskSourceImpl(
     private val encryptedPreferences: SharedPreferences,
     private val json: Json,
+    private val storageKey: String = OUTBOX_KEY,
 ) : WearOutboxDiskSource {
     override fun read(): Result<List<WearOutboxRecord>> = outboxResult {
-        val serialized = encryptedPreferences.getString(OUTBOX_KEY, null)
+        val serialized = encryptedPreferences.getString(storageKey, null)
         if (serialized == null) {
-            check(!encryptedPreferences.contains(OUTBOX_KEY))
+            check(!encryptedPreferences.contains(storageKey))
             emptyList()
         } else {
             require(serialized.length <= MAX_OUTBOX_CHARACTERS)
@@ -30,7 +37,7 @@ class WearOutboxDiskSourceImpl(
         validateOutbox(records)
         val serialized = json.encodeToString(records)
         require(serialized.length <= MAX_OUTBOX_CHARACTERS)
-        if (!encryptedPreferences.edit().putString(OUTBOX_KEY, serialized).commit()) {
+        if (!encryptedPreferences.edit().putString(storageKey, serialized).commit()) {
             throw IOException("Wear outbox not saved")
         }
     }

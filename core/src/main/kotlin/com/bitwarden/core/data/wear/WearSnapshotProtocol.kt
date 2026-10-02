@@ -13,7 +13,6 @@ private const val SNAPSHOT_VERSION = 1
 private const val SNAPSHOT_OPERATION = 1
 private const val REVOCATION_OPERATION = 2
 private const val MAX_CIPHERTEXT_BYTES = 2 * 1024 * 1024 + 548
-private const val MAX_FRAME_BYTES = MAX_CIPHERTEXT_BYTES + 128
 private const val KEY_ID_LENGTH = 64
 
 /** Non-secret routing information, authenticated by the payload cipher as associated data. */
@@ -30,6 +29,8 @@ data class WearSnapshotFrame(val header: WearSnapshotHeader, val ciphertext: Byt
 
 /** Bounded wire format; callers must separately authenticate the source and enforce revisions. */
 object WearSnapshotProtocol {
+    /** Upper bound for encoded snapshot frames, including routing metadata. */
+    const val MAX_PACKET_BYTES: Int = MAX_CIPHERTEXT_BYTES + 128
     /** Identifies a recipient without transmitting its key in every snapshot. */
     fun recipientKeyId(publicKey: ByteArray): String = MessageDigest.getInstance("SHA-256")
         .digest(publicKey).joinToString("") { "%02x".format(it) }
@@ -60,7 +61,7 @@ object WearSnapshotProtocol {
 
     /** Rejects unsupported versions, invalid identifiers, lengths and trailing bytes. */
     fun decode(bytes: ByteArray): Result<WearSnapshotFrame> = formatResult {
-        require(bytes.size <= MAX_FRAME_BYTES)
+        require(bytes.size <= MAX_PACKET_BYTES)
         DataInputStream(ByteArrayInputStream(bytes)).use { input ->
             require(input.readUnsignedByte() == SNAPSHOT_VERSION)
             val operation = input.readUnsignedByte()
