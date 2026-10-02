@@ -37,7 +37,7 @@ class WearConsentManagerTest {
             listOf(WearDevice("watch", "Watch")),
         )
         every { disk.getConsents() } returns Result.success(emptyList())
-        every { disk.storeConsents(any()) } returns Result.success(Unit)
+        every { disk.compareAndSetConsents(any(), any()) } returns Result.success(Unit)
     }
 
     @Test
@@ -45,7 +45,7 @@ class WearConsentManagerTest {
         every { locks.isVaultUnlocked("user") } returns false
         assertEquals(WearConsentResult.VaultLocked, manager.setConsent("user", "watch", true))
         coVerify(exactly = 0) { devices.getDevices() }
-        verify(exactly = 0) { disk.storeConsents(any()) }
+        verify(exactly = 0) { disk.compareAndSetConsents(any(), any()) }
     }
 
     @Test
@@ -55,7 +55,7 @@ class WearConsentManagerTest {
             Result.success(listOf(WearDevice("watch", "Watch")))
         }
         assertEquals(WearConsentResult.VaultLocked, manager.setConsent("user", "watch", true))
-        verify(exactly = 0) { disk.storeConsents(any()) }
+        verify(exactly = 0) { disk.compareAndSetConsents(any(), any()) }
     }
 
     @Test
@@ -67,7 +67,9 @@ class WearConsentManagerTest {
             manager.setConsent("user", "watch", true),
         )
         verify {
-            disk.storeConsents(listOf(other, WearConsent("user", "watch", "Watch", true, "AQID")))
+            disk.compareAndSetConsents(
+                any(), listOf(other, WearConsent("user", "watch", "Watch", true, "AQID")),
+            )
         }
     }
 
@@ -81,7 +83,11 @@ class WearConsentManagerTest {
             WearConsentResult.Success(listOf(WearConsentDevice("watch", "Watch", false, false))),
             manager.setConsent("user", "watch", false),
         )
-        verify { disk.storeConsents(listOf(WearConsent("user", "watch", "Watch", false))) }
+        verify {
+            disk.compareAndSetConsents(
+                any(), listOf(WearConsent("user", "watch", "Watch", false)),
+            )
+        }
     }
 
     @Test
@@ -92,12 +98,12 @@ class WearConsentManagerTest {
             listOf(WearConsent("user", "watch", "Watch", false)),
         )
         assertEquals(WearConsentResult.Error, manager.setConsent("user", "watch", true))
-        verify(exactly = 0) { disk.storeConsents(any()) }
+        verify(exactly = 0) { disk.compareAndSetConsents(any(), any()) }
     }
 
     @Test
     fun `a persistence failure never reports successful authorization`() = runTest {
-        every { disk.storeConsents(any()) } returns Result.failure(IOException())
+        every { disk.compareAndSetConsents(any(), any()) } returns Result.failure(IOException())
         assertEquals(WearConsentResult.Error, manager.setConsent("user", "watch", true))
     }
 
@@ -111,14 +117,18 @@ class WearConsentManagerTest {
             WearConsentResult.Success(listOf(WearConsentDevice("watch", "Watch", false, false))),
             manager.setConsent("user", "watch", false),
         )
-        verify { disk.storeConsents(listOf(WearConsent("user", "watch", "Watch", false))) }
+        verify {
+            disk.compareAndSetConsents(
+                any(), listOf(WearConsent("user", "watch", "Watch", false)),
+            )
+        }
     }
 
     @Test
     fun `unreadable consent fails closed without overwriting the ledger`() = runTest {
         every { disk.getConsents() } returns Result.failure(IOException())
         assertEquals(WearConsentResult.Error, manager.setConsent("user", "watch", true))
-        verify(exactly = 0) { disk.storeConsents(any()) }
+        verify(exactly = 0) { disk.compareAndSetConsents(any(), any()) }
     }
 
     @Test
@@ -127,14 +137,14 @@ class WearConsentManagerTest {
             listOf(WearConsent("user", "watch", "Watch", true, "old-key")),
         )
         assertEquals(WearConsentResult.Error, manager.getDevices("user"))
-        verify(exactly = 0) { disk.storeConsents(any()) }
+        verify(exactly = 0) { disk.compareAndSetConsents(any(), any()) }
     }
 
     @Test
     fun `key discovery failure never grants new consent`() = runTest {
         coEvery { keys.getPublicKey("watch") } returns Result.failure(IOException())
         assertEquals(WearConsentResult.Error, manager.setConsent("user", "watch", true))
-        verify(exactly = 0) { disk.storeConsents(any()) }
+        verify(exactly = 0) { disk.compareAndSetConsents(any(), any()) }
     }
 
     @Test
@@ -144,7 +154,7 @@ class WearConsentManagerTest {
             Result.success(byteArrayOf(1, 2, 3))
         }
         assertEquals(WearConsentResult.VaultLocked, manager.setConsent("user", "watch", true))
-        verify(exactly = 0) { disk.storeConsents(any()) }
+        verify(exactly = 0) { disk.compareAndSetConsents(any(), any()) }
     }
 
     @Test
@@ -154,7 +164,7 @@ class WearConsentManagerTest {
             Result.success(byteArrayOf(1, 2, 3))
         }
         assertEquals(WearConsentResult.VaultLocked, manager.setConsent("user", "watch", true))
-        verify(exactly = 0) { disk.storeConsents(any()) }
+        verify(exactly = 0) { disk.compareAndSetConsents(any(), any()) }
     }
 
     @Test
@@ -172,7 +182,9 @@ class WearConsentManagerTest {
             manager.getDevices("user"),
         )
         verify {
-            disk.storeConsents(listOf(WearConsent("user", "watch", "Watch", true, "AQID")))
+            disk.compareAndSetConsents(
+                any(), listOf(WearConsent("user", "watch", "Watch", true, "AQID")),
+            )
         }
     }
 
@@ -184,7 +196,9 @@ class WearConsentManagerTest {
         coEvery { devices.getDevices() } returns Result.failure(IOException())
         manager.setConsent("user", "watch", false)
         verify {
-            disk.storeConsents(listOf(WearConsent("user", "watch", "Watch", false, "AQID")))
+            disk.compareAndSetConsents(
+                any(), listOf(WearConsent("user", "watch", "Watch", false, "AQID")),
+            )
         }
         coVerify(exactly = 0) { keys.getPublicKey(any()) }
     }

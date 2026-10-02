@@ -30,8 +30,8 @@ class WearSyncCoordinatorTest {
     @BeforeEach
     fun setUp() {
         every { consentSource.getConsents() } answers { Result.success(decisions) }
-        every { consentSource.storeConsents(any()) } answers {
-            decisions = firstArg()
+        every { consentSource.compareAndSetConsents(any(), any()) } answers {
+            decisions = secondArg()
             Result.success(Unit)
         }
         coEvery { outbox.getRecord(any()) } answers {
@@ -80,7 +80,7 @@ class WearSyncCoordinatorTest {
 
     @Test
     fun `failed withdrawal persistence stops preparation and delivery`() = runTest {
-        every { consentSource.storeConsents(any()) } returns failure()
+        every { consentSource.compareAndSetConsents(any(), any()) } returns failure()
         assertTrue(coordinator.revokeAccount("user").isFailure)
         coVerify(exactly = 0) { preparer.prepareRevocation(any(), any()) }
         coVerify(exactly = 0) { delivery.deliverPending() }
@@ -94,7 +94,7 @@ class WearSyncCoordinatorTest {
         coEvery { preparer.prepareRevocation(any(), any()) } returns Result.success(Unit)
         assertTrue(coordinator.retry().isSuccess)
         coVerify(exactly = 2) { preparer.prepareRevocation("user", "watch") }
-        verify(exactly = 1) { consentSource.storeConsents(any()) }
+        verify(exactly = 1) { consentSource.compareAndSetConsents(any(), any()) }
     }
 
     @Test

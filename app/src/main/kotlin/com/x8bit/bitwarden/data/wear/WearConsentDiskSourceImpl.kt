@@ -15,6 +15,7 @@ class WearConsentDiskSourceImpl(
     private val encryptedPreferences: SharedPreferences,
     private val json: Json,
 ) : WearConsentDiskSource {
+    @Synchronized
     override fun getConsents(): Result<List<WearConsent>> = try {
         val serialized = encryptedPreferences.getString(CONSENTS_KEY, null)
         if (serialized == null && encryptedPreferences.contains(CONSENTS_KEY)) {
@@ -32,7 +33,17 @@ class WearConsentDiskSourceImpl(
         Result.failure(error)
     }
 
-    override fun storeConsents(consents: List<WearConsent>): Result<Unit> = try {
+    @Synchronized
+    override fun compareAndSetConsents(
+        expected: List<WearConsent>,
+        updated: List<WearConsent>,
+    ): Result<Unit> {
+        val current = getConsents().getOrElse { return Result.failure(it) }
+        if (current != expected) return Result.failure(IOException("Consent changed"))
+        return writeConsents(updated)
+    }
+
+    private fun writeConsents(consents: List<WearConsent>): Result<Unit> = try {
         val committed = encryptedPreferences.edit()
             .putString(CONSENTS_KEY, json.encodeToString(consents))
             .commit()

@@ -7,8 +7,14 @@ interface WearConsentDiskSource {
     /** Returns saved decisions, or a failure if they cannot be read safely. */
     fun getConsents(): Result<List<WearConsent>>
 
-    /** Persists decisions before reporting success. Revocations remain in the ledger. */
-    fun storeConsents(consents: List<WearConsent>): Result<Unit>
+    /**
+     * Atomically persists [updated] only if the current ledger still matches [expected].
+     * A conflicting or unreadable ledger fails without changing any decisions.
+     */
+    fun compareAndSetConsents(
+        expected: List<WearConsent>,
+        updated: List<WearConsent>,
+    ): Result<Unit>
 }
 
 /** User consent for a specific account and companion. No vault keys or TOTP data are stored. */

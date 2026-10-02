@@ -75,7 +75,7 @@ class WearConsentManagerImpl(
             if (!isAccountUnlocked(userId)) return WearConsentResult.VaultLocked
             updated[index] = pinned
         }
-        if (updated != consents && diskSource.storeConsents(updated).isFailure) {
+        if (updated != consents && diskSource.compareAndSetConsents(consents, updated).isFailure) {
             return WearConsentResult.Error
         }
         if (!isAccountUnlocked(userId)) return WearConsentResult.VaultLocked
@@ -91,7 +91,8 @@ class WearConsentManagerImpl(
         devices.any { it.id == consent.deviceId && it.isReachable }
 
     private fun storeDecision(consents: List<WearConsent>, decision: WearConsent): Boolean =
-        diskSource.storeConsents(
+        diskSource.compareAndSetConsents(
+            consents,
             consents.filterNot {
                 it.userId == decision.userId && it.deviceId == decision.deviceId
             } + decision,

@@ -42,7 +42,9 @@ class WearSyncCoordinatorImpl(
                 val updated = decisions.map {
                     if (it.userId == userId) it.copy(isAuthorized = false) else it
                 }
-                if (updated != decisions && consentSource.storeConsents(updated).isFailure) {
+                if (updated != decisions &&
+                    consentSource.compareAndSetConsents(decisions, updated).isFailure
+                ) {
                     return@withLock synchronizationUnavailable()
                 }
                 synchronize(null)

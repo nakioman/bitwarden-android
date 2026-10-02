@@ -3,6 +3,7 @@ package com.x8bit.bitwarden.data.wear
 import android.content.SharedPreferences
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -31,7 +32,16 @@ class WearConsentDiskSourceTest {
         every { editor.putString(any(), any()) } returns editor
         every { editor.commit() } returns false
         every { preferences.edit() } returns editor
-        assertTrue(source.storeConsents(emptyList()).isFailure)
+        every { preferences.getString(any(), null) } returns null
+        every { preferences.contains(any()) } returns false
+        assertTrue(source.compareAndSetConsents(emptyList(), emptyList()).isFailure)
+    }
+
+    @Test
+    fun `an unreadable ledger cannot be overwritten by compare and set`() {
+        every { preferences.getString(any(), null) } returns "invalid-json"
+        assertTrue(source.compareAndSetConsents(emptyList(), emptyList()).isFailure)
+        verify(exactly = 0) { preferences.edit() }
     }
 
     @Test
