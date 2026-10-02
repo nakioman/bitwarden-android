@@ -5,6 +5,9 @@ import com.bitwarden.core.data.wear.WearSnapshotFrame
 import com.bitwarden.core.data.wear.WearSnapshotProtocol
 import com.x8bit.bitwarden.wear.data.security.WatchSecurityManager
 import com.x8bit.bitwarden.wear.data.security.WatchSecurityStatus
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -18,6 +21,8 @@ class WatchSnapshotManagerImpl(
     private val dispatcherManager: DispatcherManager,
 ) : WatchSnapshotManager {
     private val mutex = Mutex()
+    private val mutableChanges = MutableSharedFlow<Unit>(replay = 1)
+    override val changes: Flow<Unit> = mutableChanges.asSharedFlow()
 
     override suspend fun provision(): Result<ByteArray> = withContext(dispatcherManager.io) {
         mutex.withLock {
@@ -60,7 +65,10 @@ class WatchSnapshotManagerImpl(
                     return@withLock Result.failure(it)
                 }
                 diskSource.write(encoded).fold(
-                    onSuccess = { completeCommand(frame) },
+                    onSuccess = {
+                        mutableChanges.tryEmit(Unit)
+                        completeCommand(frame)
+                    },
                     onFailure = { Result.failure(it) },
                 )
             }
@@ -137,6 +145,7 @@ class WatchSnapshotManagerImpl(
     private fun eraseAll(): Result<Unit> {
         val keyResult = keyManager.deleteKey()
         val diskResult = diskSource.delete()
+        mutableChanges.tryEmit(Unit)
         return keyResult.fold(onSuccess = { diskResult }, onFailure = { Result.failure(it) })
     }
 }

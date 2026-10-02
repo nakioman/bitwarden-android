@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -19,7 +18,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -35,12 +33,14 @@ import androidx.wear.compose.ui.tooling.preview.WearPreviewDevices
 import com.bitwarden.ui.platform.feature.settings.appearance.model.AppTheme
 import com.bitwarden.ui.platform.theme.BitwardenTheme
 import com.x8bit.bitwarden.wear.R
+import com.x8bit.bitwarden.wear.data.otp.WatchVerificationCode
 
-/** A visual prototype of the verification-code account list. */
+/** Displays the synchronized verification-code accounts. */
 @Composable
 internal fun VerificationCodeListScreen(
+    accounts: List<WatchVerificationCode>,
     listState: LazyListState,
-    onAccountClick: (Int) -> Unit,
+    onAccountClick: (String) -> Unit,
 ) {
     val colors = BitwardenTheme.colorScheme
     val accountsTitle = stringResource(R.string.accounts)
@@ -53,14 +53,14 @@ internal fun VerificationCodeListScreen(
         contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 24.dp, bottom = 16.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        itemsIndexed(previewAccounts) { index, account ->
-            DemoAccountRow(account = account, onClick = { onAccountClick(index) })
+        itemsIndexed(accounts, key = { _, account -> account.id }) { _, account ->
+            AccountRow(account = account, onClick = { onAccountClick(account.id) })
         }
     }
 }
 
 @Composable
-private fun DemoAccountRow(account: PreviewAccount, onClick: () -> Unit) {
+private fun AccountRow(account: WatchVerificationCode, onClick: () -> Unit) {
     val colors = BitwardenTheme.colorScheme
     val typography = BitwardenTheme.typography
     Row(
@@ -73,19 +73,7 @@ private fun DemoAccountRow(account: PreviewAccount, onClick: () -> Unit) {
             .padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(
-            modifier = Modifier
-                .size(30.dp)
-                .clip(CircleShape)
-                .background(colors.filledButton.background),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = account.initial,
-                color = colors.filledButton.foreground,
-                style = typography.bodyMediumEmphasis,
-            )
-        }
+        VerificationAccountIcon(account = account, modifier = Modifier.size(30.dp))
         Spacer(modifier = Modifier.width(6.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
@@ -97,7 +85,7 @@ private fun DemoAccountRow(account: PreviewAccount, onClick: () -> Unit) {
                 overflow = TextOverflow.Clip,
             )
             Text(
-                text = account.username,
+                text = account.username.orEmpty(),
                 modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE),
                 color = colors.text.secondary,
                 style = typography.bodySmall,
@@ -108,81 +96,12 @@ private fun DemoAccountRow(account: PreviewAccount, onClick: () -> Unit) {
     }
 }
 
-internal data class PreviewAccount(
-    val name: String,
-    val username: String,
-    val initial: String,
-    val codes: List<String>,
-)
-
-internal val previewAccounts = listOf(
-    PreviewAccount(
-        name = "GitHub",
-        username = "usuario@example.com",
-        initial = "G",
-        codes = listOf("287461", "645092"),
-    ),
-    PreviewAccount(
-        name = "Google",
-        username = "usuario.muy.largo@example.com",
-        initial = "G",
-        codes = listOf("134982", "781530"),
-    ),
-    PreviewAccount(
-        name = "Microsoft Entra ID empresarial",
-        username = "usuario@example.com",
-        initial = "M",
-        codes = listOf("523761", "094216"),
-    ),
-    PreviewAccount(
-        name = "Discord",
-        username = "usuario@example.com",
-        initial = "D",
-        codes = listOf("805214", "370619"),
-    ),
-    PreviewAccount(
-        name = "GitLab",
-        username = "usuario@example.com",
-        initial = "G",
-        codes = listOf("672408", "193756"),
-    ),
-    PreviewAccount(
-        name = "Amazon Web Services",
-        username = "trabajo@example.com",
-        initial = "A",
-        codes = listOf("329815", "761204"),
-    ),
-    PreviewAccount(
-        name = "Dropbox",
-        username = "usuario@example.com",
-        initial = "D",
-        codes = listOf("458903", "012746"),
-    ),
-    PreviewAccount(
-        name = "Reddit",
-        username = "usuario@example.com",
-        initial = "R",
-        codes = listOf("740362", "385019"),
-    ),
-    PreviewAccount(
-        name = "Slack workspace de desarrollo",
-        username = "trabajo.muy.largo@example.com",
-        initial = "S",
-        codes = listOf("916427", "204583"),
-    ),
-    PreviewAccount(
-        name = "Cloudflare",
-        username = "usuario@example.com",
-        initial = "C",
-        codes = listOf("583104", "726918"),
-    ),
-)
-
 @WearPreviewDevices
 @Composable
 private fun VerificationCodeListScreenPreview() {
     BitwardenTheme(theme = AppTheme.DARK) {
         VerificationCodeListScreen(
+            accounts = previewAccounts,
             listState = rememberLazyListState(),
             onAccountClick = {},
         )

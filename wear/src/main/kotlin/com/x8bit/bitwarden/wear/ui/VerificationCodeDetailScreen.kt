@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -28,12 +27,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -61,32 +58,38 @@ import com.bitwarden.ui.platform.resource.BitwardenDrawable
 import com.bitwarden.ui.platform.resource.BitwardenString
 import com.bitwarden.ui.platform.theme.BitwardenTheme
 import com.x8bit.bitwarden.wear.R
-import java.time.Clock
-import java.time.Instant
-import java.time.ZoneOffset
 import java.util.Date
 import kotlinx.coroutines.delay
+import androidx.compose.runtime.snapshotFlow
+import com.x8bit.bitwarden.wear.data.otp.WatchVerificationCode
+import com.x8bit.bitwarden.wear.ui.accounts.validOtpAt
 
-private const val PREVIEW_CODE_PERIOD_SECONDS = 30L
 private const val FAVORITE_FEEDBACK_MILLIS = 850L
 private const val MILLIS_PER_SECOND = 1000L
 private const val CODE_GROUP_SIZE = 3
+private const val STANDARD_CODE_LENGTH = 6
 private const val FAVORITE_INITIAL_SCALE = 0.4f
 
 /** Displays one vertical page per account. */
 @Composable
 internal fun VerificationCodeDetailPager(
     initialAccountIndex: Int,
-    accounts: List<PreviewAccount>,
-    clock: Clock,
-    favorites: Map<Int, Boolean>,
-    onToggleFavorite: (Int) -> Unit,
+    accounts: List<WatchVerificationCode>,
+    nowSeconds: Long,
+    favorites: Set<String>,
+    onToggleFavorite: (String) -> Unit,
+    onAccountSelected: (String) -> Unit,
 ) {
     val colors = BitwardenTheme.colorScheme
     val pagerState = rememberPagerState(
         initialPage = initialAccountIndex,
         pageCount = { accounts.size },
     )
+    LaunchedEffect(pagerState, accounts.map { it.id }) {
+        snapshotFlow { pagerState.settledPage }.collect { page ->
+            accounts.getOrNull(page)?.let { onAccountSelected(it.id) }
+        }
+    }
     VerticalPagerScaffold(
         pagerState = pagerState,
         pageIndicator = {
@@ -106,22 +109,22 @@ internal fun VerificationCodeDetailPager(
                 VerificationCodeDetailScreen(
                     account = accounts[page],
                     accountIndex = page,
-                    clock = clock,
-                    isFavorite = favorites[page] == true,
-                    onToggleFavorite = { onToggleFavorite(page) },
+                    nowSeconds = nowSeconds,
+                    isFavorite = accounts[page].id in favorites,
+                    onToggleFavorite = { onToggleFavorite(accounts[page].id) },
                 )
             }
         }
     }
 }
 
-/** Shows a preview code and lets a double tap toggle its favorite state. */
+/** Shows the current SDK code and lets a double tap toggle its favorite state. */
 @Suppress("LongParameterList")
 @Composable
 private fun VerificationCodeDetailScreen(
-    account: PreviewAccount,
+    account: WatchVerificationCode,
     accountIndex: Int,
-    clock: Clock,
+    nowSeconds: Long,
     isFavorite: Boolean,
     onToggleFavorite: () -> Unit,
 ) {
@@ -135,10 +138,13 @@ private fun VerificationCodeDetailScreen(
             feedbackFavorite = null
         }
     }
-    val nowSeconds = rememberPreviewTimeSeconds(clock)
-    val secondsRemaining = (PREVIEW_CODE_PERIOD_SECONDS -
-        nowSeconds % PREVIEW_CODE_PERIOD_SECONDS).toInt()
-    val codeIndex = ((nowSeconds / PREVIEW_CODE_PERIOD_SECONDS) % account.codes.size).toInt()
+    val otp = account.validOtpAt(nowSeconds)
+    val periodSeconds = otp?.periodSeconds ?: 1
+    val secondsRemaining = if (otp == null) {
+        0
+    } else {
+        (periodSeconds - nowSeconds % periodSeconds).toInt()
+    }
     val clockText = DateFormat.getTimeFormat(context)
         .format(Date(nowSeconds * MILLIS_PER_SECOND))
     val favoriteActionLabel = stringResource(
@@ -172,27 +178,14 @@ private fun VerificationCodeDetailScreen(
     ) {
         DetailContent(
             account = account,
-            code = account.codes[codeIndex],
+            code = otp?.code ?: "—",
+            periodSeconds = periodSeconds,
             secondsRemaining = secondsRemaining,
             clockText = clockText,
             isFavorite = isFavorite,
         )
         FavoriteFeedback(feedbackFavorite = feedbackFavorite)
     }
-}
-
-@Composable
-private fun rememberPreviewTimeSeconds(clock: Clock): Long {
-    val nowSeconds by produceState(
-        initialValue = clock.millis() / MILLIS_PER_SECOND,
-        key1 = clock,
-    ) {
-        while (true) {
-            delay(MILLIS_PER_SECOND)
-            value = clock.millis() / MILLIS_PER_SECOND
-        }
-    }
-    return nowSeconds
 }
 
 @Composable
@@ -225,9 +218,10 @@ private fun BoxScope.FavoriteFeedback(feedbackFavorite: Boolean?) {
 
 @Composable
 private fun DetailContent(
-    account: PreviewAccount,
+    account: WatchVerificationCode,
     code: String,
     secondsRemaining: Int,
+    periodSeconds: Int,
     clockText: String,
     isFavorite: Boolean,
 ) {
@@ -251,32 +245,24 @@ private fun DetailContent(
         Text(
             text = code.chunked(CODE_GROUP_SIZE).joinToString(" "),
             color = colors.text.codeBlue,
-            style = typography.sensitiveInfoMedium.copy(fontSize = 30.sp, lineHeight = 34.sp),
+            style = typography.sensitiveInfoMedium.copy(
+                fontSize = if (code.length > STANDARD_CODE_LENGTH) 24.sp else 30.sp,
+                lineHeight = 34.sp,
+            ),
+            maxLines = 1,
             textAlign = TextAlign.Center,
         )
         Spacer(modifier = Modifier.height(4.dp))
-        CountdownRing(secondsRemaining = secondsRemaining)
+        CountdownRing(secondsRemaining = secondsRemaining, periodSeconds = periodSeconds)
     }
 }
 
 @Composable
-private fun AccountHeading(account: PreviewAccount, isFavorite: Boolean) {
+private fun AccountHeading(account: WatchVerificationCode, isFavorite: Boolean) {
     val colors = BitwardenTheme.colorScheme
     val typography = BitwardenTheme.typography
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(
-            modifier = Modifier
-                .size(28.dp)
-                .clip(CircleShape)
-                .background(colors.filledButton.background),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = account.initial,
-                color = colors.filledButton.foreground,
-                style = typography.bodyMediumEmphasis,
-            )
-        }
+        VerificationAccountIcon(account = account, modifier = Modifier.size(28.dp))
         Spacer(modifier = Modifier.height(2.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -304,7 +290,7 @@ private fun AccountHeading(account: PreviewAccount, isFavorite: Boolean) {
             )
         }
         Text(
-            text = account.username,
+            text = account.username.orEmpty(),
             modifier = Modifier
                 .fillMaxWidth()
                 .basicMarquee(iterations = Int.MAX_VALUE),
@@ -318,7 +304,7 @@ private fun AccountHeading(account: PreviewAccount, isFavorite: Boolean) {
 }
 
 @Composable
-private fun CountdownRing(secondsRemaining: Int) {
+private fun CountdownRing(secondsRemaining: Int, periodSeconds: Int) {
     val colors = BitwardenTheme.colorScheme
     Box(modifier = Modifier.size(50.dp), contentAlignment = Alignment.Center) {
         Canvas(modifier = Modifier.fillMaxSize()) {
@@ -341,7 +327,7 @@ private fun CountdownRing(secondsRemaining: Int) {
                 color = colors.icon.secondary,
                 startAngle = -90f,
                 sweepAngle = 360f * secondsRemaining /
-                    PREVIEW_CODE_PERIOD_SECONDS.toFloat(),
+                    periodSeconds.toFloat(),
                 useCenter = false,
                 topLeft = Offset(inset, inset),
                 size = ringSize,
@@ -363,9 +349,10 @@ private fun VerificationCodeDetailScreenPreview() {
         VerificationCodeDetailPager(
             initialAccountIndex = 0,
             accounts = previewAccounts,
-            clock = Clock.fixed(Instant.parse("2026-09-30T10:08:12Z"), ZoneOffset.UTC),
-            favorites = emptyMap(),
+            nowSeconds = PREVIEW_TIME_SECONDS,
+            favorites = emptySet(),
             onToggleFavorite = {},
+            onAccountSelected = {},
         )
     }
 }

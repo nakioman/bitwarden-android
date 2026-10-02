@@ -1,5 +1,6 @@
 package com.x8bit.bitwarden.wear.data.sync
 
+import app.cash.turbine.test
 import com.bitwarden.core.data.manager.dispatcher.FakeDispatcherManager
 import com.bitwarden.core.data.wear.WearSnapshotFrame
 import com.bitwarden.core.data.wear.WearSnapshotHeader
@@ -44,6 +45,34 @@ class WatchSnapshotManagerTest {
         every { disk.delete() } answers {
             saved = null
             Result.success(Unit)
+        }
+    }
+
+    @Test
+    fun `change signal follows durable storage and ignores rejected packets`() = runTest {
+        manager.changes.test {
+            assertTrue(manager.receive("phone", byteArrayOf(1)).isFailure)
+            expectNoEvents()
+            manager.receive("phone", packet()).getOrThrow()
+            awaitItem()
+            assertTrue(WatchSnapshotRecord.decode(requireNotNull(saved)).isSuccess)
+            manager.clear().getOrThrow()
+            awaitItem()
+            assertNull(saved)
+        }
+    }
+
+    @Test
+    fun `failed key deletion still invalidates UI after durable revocation`() = runTest {
+        manager.receive("phone", packet()).getOrThrow()
+        every { keys.deleteKey() } returns Result.failure(IOException())
+        manager.changes.test {
+            awaitItem()
+            val revoke = packet(header.copy(revision = 2, isRevocation = true), byteArrayOf())
+            assertTrue(manager.receive("phone", revoke).isFailure)
+            awaitItem()
+            assertTrue(WatchSnapshotRecord.decode(requireNotNull(saved)).getOrThrow()
+                .frame.header.isRevocation)
         }
     }
 
