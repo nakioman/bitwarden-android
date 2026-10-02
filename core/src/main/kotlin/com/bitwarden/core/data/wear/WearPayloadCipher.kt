@@ -28,22 +28,25 @@ private const val TAG_BYTES = 16
 private const val MIN_RSA_BITS = 2048
 private const val MAX_RSA_BITS = 4096
 private const val MAX_WRAPPED_KEY_BYTES = 512
-private const val MAX_PAYLOAD_BYTES = 2 * 1024 * 1024
 private const val ENVELOPE_HEADER_BYTES = 8
 private const val MAX_ENVELOPE_BYTES =
-    MAX_PAYLOAD_BYTES + MAX_WRAPPED_KEY_BYTES + NONCE_BYTES + TAG_BYTES + ENVELOPE_HEADER_BYTES
+    WearPayloadCipher.MAX_PLAINTEXT_BYTES + MAX_WRAPPED_KEY_BYTES +
+        NONCE_BYTES + TAG_BYTES + ENVELOPE_HEADER_BYTES
 private const val AES_TRANSFORMATION = "AES/GCM/NoPadding"
 private const val RSA_TRANSFORMATION = "RSA/ECB/OAEPPadding"
 
 /** Encrypts bounded companion payloads using RSA-OAEP and a fresh AES-GCM key per payload. */
 object WearPayloadCipher {
+    /** Maximum plaintext size accepted by the companion envelope. */
+    const val MAX_PLAINTEXT_BYTES: Int = 2 * 1024 * 1024
+
     /**
      * Encrypts [plaintext] for a watch's X.509 RSA [publicKey]. [context] must bind the
      * enrollment, account and revision. It must be validated independently by the receiver.
      */
     fun encrypt(publicKey: ByteArray, plaintext: ByteArray, context: ByteArray): Result<ByteArray> =
         cryptoResult {
-            require(plaintext.size <= MAX_PAYLOAD_BYTES)
+            require(plaintext.size <= MAX_PLAINTEXT_BYTES)
             require(publicKey.size <= MAX_WRAPPED_KEY_BYTES * 2)
             val recipient = KeyFactory.getInstance("RSA")
                 .generatePublic(X509EncodedKeySpec(publicKey)) as? RSAPublicKey

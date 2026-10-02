@@ -1,5 +1,7 @@
 package com.x8bit.bitwarden.data.wear
 
+import com.bitwarden.core.data.wear.WearOtpEntry
+
 import com.bitwarden.core.data.manager.dispatcher.FakeDispatcherManager
 import com.bitwarden.network.model.CipherRepromptTypeJson
 import com.bitwarden.network.model.SyncResponseJson

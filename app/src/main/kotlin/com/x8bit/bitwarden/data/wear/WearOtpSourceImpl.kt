@@ -1,5 +1,7 @@
 package com.x8bit.bitwarden.data.wear
 
+import com.bitwarden.core.data.wear.WearOtpEntry
+
 import android.database.sqlite.SQLiteException
 import com.bitwarden.core.data.manager.dispatcher.DispatcherManager
 import com.bitwarden.network.model.CipherRepromptTypeJson
