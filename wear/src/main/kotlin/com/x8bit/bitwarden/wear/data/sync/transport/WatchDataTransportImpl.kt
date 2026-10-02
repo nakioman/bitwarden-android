@@ -1,6 +1,5 @@
 package com.x8bit.bitwarden.wear.data.sync.transport
 
-import com.bitwarden.core.data.wear.WearDataChannel
 import com.bitwarden.core.data.wear.WearDataProtocol
 import com.bitwarden.core.data.wear.WearSnapshotProtocol
 import com.google.android.gms.tasks.Task
@@ -41,13 +40,12 @@ class WatchDataTransportImpl(
     }
 
     override suspend fun publishReceipt(
-        channel: WearDataChannel,
         localNodeId: String,
         receipt: ByteArray,
     ): Result<Unit> = transportResult {
         require(receipt.size == WearDataProtocol.MAX_RECEIPT_BYTES)
         dataClient.putDataItem(
-            PutDataRequest.create(WearDataProtocol.receiptPath(channel, localNodeId))
+            PutDataRequest.create(WearDataProtocol.receiptPath(localNodeId))
                 .setData(receipt.copyOf()).setUrgent(),
         ).awaitTransport()
     }

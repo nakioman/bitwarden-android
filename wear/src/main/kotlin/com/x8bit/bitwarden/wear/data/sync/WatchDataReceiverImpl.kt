@@ -1,6 +1,5 @@
 package com.x8bit.bitwarden.wear.data.sync
 
-import com.bitwarden.core.data.wear.WearDataChannel
 import com.bitwarden.core.data.wear.WearDataProtocol
 import com.bitwarden.core.data.wear.WearSnapshotProtocol
 import java.io.IOException
@@ -13,7 +12,7 @@ class WatchDataReceiverImpl(private val snapshotManager: WatchSnapshotManager) :
         path: String?,
         packet: ByteArray,
     ): Result<ByteArray> {
-        if (!WearDataProtocol.isPacketPath(WearDataChannel.PRODUCTION, path, localNodeId)) {
+        if (!WearDataProtocol.isPacketPath(path, localNodeId)) {
             return rejected()
         }
         if (sourceNodeId == localNodeId || sourceNodeId.isBlank() ||

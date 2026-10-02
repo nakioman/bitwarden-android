@@ -1,6 +1,5 @@
 package com.x8bit.bitwarden.wear.data.sync.transport
 
-import com.bitwarden.core.data.wear.WearDataChannel
 import com.google.android.gms.tasks.OnFailureListener
 import com.google.android.gms.tasks.OnSuccessListener
 import com.google.android.gms.tasks.Task
@@ -57,7 +56,7 @@ class WatchDataTransportTest {
 
     @Test
     fun `malformed receipt is rejected before publication`() = runTest {
-        assertTrue(transport.publishReceipt(WearDataChannel.PRODUCTION, "watch", byteArrayOf())
+        assertTrue(transport.publishReceipt("watch", byteArrayOf())
             .isFailure)
         verify(exactly = 0) { client.putDataItem(any()) }
     }

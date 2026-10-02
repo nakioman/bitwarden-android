@@ -1,6 +1,5 @@
 package com.x8bit.bitwarden.wear.data.sync
 
-import com.bitwarden.core.data.wear.WearDataChannel
 import com.bitwarden.core.data.wear.WearDataProtocol
 import com.bitwarden.core.data.wear.WearSnapshotFrame
 import com.bitwarden.core.data.wear.WearSnapshotHeader
@@ -22,7 +21,7 @@ class WatchDataReceiverTest {
     )
     private val packet = WearSnapshotProtocol.encode(WearSnapshotFrame(header, byteArrayOf(1)))
         .getOrThrow()
-    private val path = WearDataProtocol.packetPath(WearDataChannel.PRODUCTION, "watch")
+    private val path = WearDataProtocol.packetPath("watch")
 
     @Test
     fun `receipt is created only after successful durable commit without a plaintext read`() =
@@ -47,8 +46,8 @@ class WatchDataReceiverTest {
     @Test
     fun `synthetic or unrelated target paths never reach production storage`() = runTest {
         listOf(
-            WearDataProtocol.packetPath(WearDataChannel.SYNTHETIC, "watch"),
-            WearDataProtocol.packetPath(WearDataChannel.PRODUCTION, "other-watch"),
+            "/bitwarden/wear/probe/data/v1/packets/d2F0Y2g",
+            WearDataProtocol.packetPath("other-watch"),
             "$path/", null,
         ).forEach {
             assertTrue(receiver.receive("watch", "phone", it, packet).isFailure)

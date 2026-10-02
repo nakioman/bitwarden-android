@@ -18,20 +18,6 @@ class WearOutboxDiskSourceTest {
     private val disk = WearOutboxDiskSourceImpl(preferences, Json)
 
     @Test
-    fun `synthetic ledger never reads writes or resets production records`() {
-        val production = listOf(WearOutboxRecord("production-watch", 9))
-        val synthetic = listOf(WearOutboxRecord("synthetic-watch", 2))
-        disk.write(production).getOrThrow()
-        val probe = WearOutboxDiskSourceImpl(preferences, Json, "synthetic-only")
-        assertTrue(probe.read().getOrThrow().isEmpty())
-        probe.write(synthetic).getOrThrow()
-        assertEquals(production, disk.read().getOrThrow())
-        assertEquals(synthetic, probe.read().getOrThrow())
-        probe.write(emptyList()).getOrThrow()
-        assertEquals(production, disk.read().getOrThrow())
-    }
-
-    @Test
     fun `empty storage and valid revision state round trip`() {
         assertEquals(emptyList<WearOutboxRecord>(), disk.read().getOrThrow())
         val records = listOf(WearOutboxRecord("watch", 1))

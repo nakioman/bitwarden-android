@@ -13,17 +13,7 @@ private const val DIGEST_BYTES = 32
 private const val RECEIPT_BYTES = 1 + Long.SIZE_BYTES + DIGEST_BYTES
 private const val MAX_NODE_LENGTH = 128
 
-/**
- * Separate routes prevent synthetic tests from reaching production state.
- *
- * @property prefix Versioned route namespace.
- */
-enum class WearDataChannel(val prefix: String) {
-    /** Reserved for the authorized companion pipeline. */
-    PRODUCTION("/bitwarden/wear/data/v1"),
-    /** Isolated debug tests only. */
-    SYNTHETIC("/bitwarden/wear/probe/data/v1"),
-}
+private const val ROUTE_PREFIX = "/bitwarden/wear/data/v1"
 
 /** Targeted DataItem paths and bounded receipts; callers must authenticate the DataItem owner. */
 object WearDataProtocol {
@@ -38,23 +28,23 @@ object WearDataProtocol {
     const val MAX_RECEIPT_BYTES: Int = RECEIPT_BYTES
 
     /** Identifies a target without putting raw node identifiers into URI paths. */
-    fun packetPath(channel: WearDataChannel, nodeId: String): String =
-        "${channel.prefix}/packets/${encodeNode(nodeId)}"
+    fun packetPath(nodeId: String): String =
+        "$ROUTE_PREFIX/packets/${encodeNode(nodeId)}"
 
     /** Receipt owned by the watch that persisted the packet. */
-    fun receiptPath(channel: WearDataChannel, nodeId: String): String =
-        "${channel.prefix}/receipts/${encodeNode(nodeId)}"
+    fun receiptPath(nodeId: String): String =
+        "$ROUTE_PREFIX/receipts/${encodeNode(nodeId)}"
 
     /** Rejects unrelated, malformed or noncanonical paths before downloading an asset. */
-    fun isPacketPath(channel: WearDataChannel, path: String?, nodeId: String): Boolean = try {
-        path == packetPath(channel, nodeId)
+    fun isPacketPath(path: String?, nodeId: String): Boolean = try {
+        path == packetPath(nodeId)
     } catch (_: IllegalArgumentException) {
         false
     }
 
     /** Rejects receipts whose canonical route does not match their DataItem owner. */
-    fun isReceiptPath(channel: WearDataChannel, path: String?, ownerNodeId: String): Boolean = try {
-        path == receiptPath(channel, ownerNodeId)
+    fun isReceiptPath(path: String?, ownerNodeId: String): Boolean = try {
+        path == receiptPath(ownerNodeId)
     } catch (_: IllegalArgumentException) {
         false
     }

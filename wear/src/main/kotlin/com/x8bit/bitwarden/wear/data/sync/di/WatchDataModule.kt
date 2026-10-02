@@ -24,7 +24,7 @@ object WatchDataModule {
     fun provideWatchDataTransport(@ApplicationContext context: Context): WatchDataTransport =
         WatchDataTransportImpl(Wearable.getDataClient(context), Wearable.getNodeClient(context))
 
-    /** Uses production persistence, independently of synthetic probe state. */
+    /** Uses protected snapshot persistence. */
     @Provides
     @Singleton
     fun provideWatchDataListenerManager(

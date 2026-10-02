@@ -1,6 +1,5 @@
 package com.x8bit.bitwarden.data.wear
 
-import com.bitwarden.core.data.wear.WearDataChannel
 import com.bitwarden.core.data.wear.WearDataProtocol
 import java.io.IOException
 
@@ -22,7 +21,7 @@ class WearDeliveryEventManagerImpl(
         path: String?,
     ): Result<Unit> {
         if (!isEnabled || scheme != "wear" || ownerNodeId == null) return Result.success(Unit)
-        if (!WearDataProtocol.isReceiptPath(WearDataChannel.PRODUCTION, path, ownerNodeId)) {
+        if (!WearDataProtocol.isReceiptPath(path, ownerNodeId)) {
             return Result.success(Unit)
         }
         val record = outbox.getRecord(ownerNodeId).getOrElse {

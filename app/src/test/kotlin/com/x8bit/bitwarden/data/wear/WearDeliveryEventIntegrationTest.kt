@@ -1,7 +1,6 @@
 package com.x8bit.bitwarden.data.wear
 
 import com.bitwarden.core.data.manager.dispatcher.FakeDispatcherManager
-import com.bitwarden.core.data.wear.WearDataChannel
 import com.bitwarden.core.data.wear.WearDataProtocol
 import com.bitwarden.core.data.wear.WearSnapshotFrame
 import com.bitwarden.core.data.wear.WearSnapshotHeader
@@ -43,7 +42,7 @@ class WearDeliveryEventIntegrationTest {
         coEvery { retry() } coAnswers { delivery.deliverPending() }
     }
     private val manager = WearDeliveryEventManagerImpl(outbox, coordinator, true)
-    private val path = WearDataProtocol.receiptPath(WearDataChannel.PRODUCTION, "watch")
+    private val path = WearDataProtocol.receiptPath("watch")
 
     @Test
     fun `receipt hint clears exact persisted packet with phone vault locked`() = runTest {

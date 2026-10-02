@@ -2,7 +2,6 @@ package com.x8bit.bitwarden.data.wear
 
 import android.net.Uri
 import com.bitwarden.core.data.manager.UuidManager
-import com.bitwarden.core.data.wear.WearDataChannel
 import com.bitwarden.core.data.wear.WearDataProtocol
 import com.bitwarden.core.data.wear.WearSnapshotProtocol
 import com.google.android.gms.tasks.Task
@@ -22,17 +21,15 @@ private const val DATA_TIMEOUT_MILLIS = 15_000L
  *
  * @property dataClient Google Play services persistent transport.
  * @property uuidManager Unique attempt identifiers for safe redelivery of unchanged packets.
- * @property channel Separate production and synthetic routes.
  */
 class WearDataSourceImpl(
     private val dataClient: DataClient,
     private val uuidManager: UuidManager,
-    private val channel: WearDataChannel = WearDataChannel.PRODUCTION,
 ) : WearDataSource {
     override suspend fun publish(deviceId: String, packet: ByteArray): Result<Unit> = safeDataCall {
         check(WearSyncAvailability.isEnabled)
         require(WearSnapshotProtocol.decode(packet).isSuccess)
-        val path = WearDataProtocol.packetPath(channel, deviceId)
+        val path = WearDataProtocol.packetPath(deviceId)
         val request = PutDataMapRequest.create(path).apply {
             dataMap.putAsset(WearDataProtocol.PACKET_ASSET, Asset.createFromBytes(packet.copyOf()))
             dataMap.putString(WearDataProtocol.ATTEMPT, uuidManager.generateUuid())
@@ -44,7 +41,7 @@ class WearDataSourceImpl(
     override suspend fun getReceipt(deviceId: String): Result<ByteArray?> = safeDataCall {
         check(WearSyncAvailability.isEnabled)
         val uri = Uri.Builder().scheme("wear").authority(deviceId)
-            .path(WearDataProtocol.receiptPath(channel, deviceId)).build()
+            .path(WearDataProtocol.receiptPath(deviceId)).build()
         val item = dataClient.getDataItem(uri).awaitData().getOrThrow()
         require(item == null || item.uri == uri)
         val receipt = item?.data

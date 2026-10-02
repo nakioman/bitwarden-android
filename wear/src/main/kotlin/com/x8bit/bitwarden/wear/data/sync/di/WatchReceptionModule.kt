@@ -18,7 +18,7 @@ import dagger.hilt.components.SingletonComponent
 import java.io.File
 import javax.inject.Singleton
 
-/** Provides framed production storage without mixing raw legacy cache or synthetic test data. */
+/** Provides protected snapshot storage and durable reception. */
 @Module
 @InstallIn(SingletonComponent::class)
 object WatchReceptionModule {

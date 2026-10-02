@@ -1,7 +1,6 @@
 package com.x8bit.bitwarden.wear.data.sync.transport
 
 import android.net.Uri
-import com.bitwarden.core.data.wear.WearDataChannel
 import com.bitwarden.core.data.wear.WearDataProtocol
 import com.google.android.gms.wearable.DataItem
 import com.x8bit.bitwarden.wear.data.sync.WatchDataReceiver
@@ -26,7 +25,7 @@ class WatchDataListenerManagerTest {
     private val item = mockk<DataItem> {
         every { uri } returns this@WatchDataListenerManagerTest.uri
     }
-    private val path = WearDataProtocol.packetPath(WearDataChannel.PRODUCTION, "watch")
+    private val path = WearDataProtocol.packetPath("watch")
     private val packet = byteArrayOf(1, 2, 3)
     private val receipt = ByteArray(WearDataProtocol.MAX_RECEIPT_BYTES)
 
@@ -38,7 +37,7 @@ class WatchDataListenerManagerTest {
         coEvery { transport.getLocalNodeId() } returns Result.success("watch")
         coEvery { transport.readPacket(item) } returns Result.success(packet)
         coEvery { receiver.receive("watch", "phone", path, packet) } returns Result.success(receipt)
-        coEvery { transport.publishReceipt(WearDataChannel.PRODUCTION, "watch", receipt) } returns
+        coEvery { transport.publishReceipt("watch", receipt) } returns
             Result.success(Unit)
     }
 
@@ -49,15 +48,15 @@ class WatchDataListenerManagerTest {
             transport.getLocalNodeId()
             transport.readPacket(item)
             receiver.receive("watch", "phone", path, packet)
-            transport.publishReceipt(WearDataChannel.PRODUCTION, "watch", receipt)
+            transport.publishReceipt("watch", receipt)
         }
     }
 
     @Test
     fun `other targets synthetic channels and noncanonical paths skip asset download`() = runTest {
         for (invalid in listOf(
-            WearDataProtocol.packetPath(WearDataChannel.PRODUCTION, "other-watch"),
-            WearDataProtocol.packetPath(WearDataChannel.SYNTHETIC, "watch"),
+            WearDataProtocol.packetPath("other-watch"),
+            "/bitwarden/wear/probe/data/v1/packets/d2F0Y2g",
             "$path/extra", null,
         )) {
             every { uri.path } returns invalid
@@ -95,7 +94,7 @@ class WatchDataListenerManagerTest {
         coEvery { transport.readPacket(item) } returns Result.failure(IOException("unavailable"))
         assertTrue(manager.receive(item).isFailure)
         coVerify(exactly = 0) { receiver.receive(any(), any(), any(), any()) }
-        coVerify(exactly = 0) { transport.publishReceipt(any(), any(), any()) }
+        coVerify(exactly = 0) { transport.publishReceipt(any(), any()) }
     }
 
     @Test
@@ -103,12 +102,12 @@ class WatchDataListenerManagerTest {
         coEvery { receiver.receive(any(), any(), any(), any()) } returns
             Result.failure(IOException("unavailable"))
         assertTrue(manager.receive(item).isFailure)
-        coVerify(exactly = 0) { transport.publishReceipt(any(), any(), any()) }
+        coVerify(exactly = 0) { transport.publishReceipt(any(), any()) }
     }
 
     @Test
     fun `receipt failure reports failure after committing so redelivery can retry`() = runTest {
-        coEvery { transport.publishReceipt(any(), any(), any()) } returns
+        coEvery { transport.publishReceipt(any(), any()) } returns
             Result.failure(IOException("unavailable"))
         assertTrue(manager.receive(item).isFailure)
         coVerify(exactly = 1) { receiver.receive("watch", "phone", path, packet) }
@@ -120,6 +119,6 @@ class WatchDataListenerManagerTest {
         assertThrows(CancellationException::class.java) {
             runTest { manager.receive(item) }
         }
-        coVerify(exactly = 0) { transport.publishReceipt(any(), any(), any()) }
+        coVerify(exactly = 0) { transport.publishReceipt(any(), any()) }
     }
 }

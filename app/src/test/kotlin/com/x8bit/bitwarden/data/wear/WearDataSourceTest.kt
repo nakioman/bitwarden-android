@@ -2,7 +2,6 @@ package com.x8bit.bitwarden.data.wear
 
 import android.net.Uri
 import com.bitwarden.core.data.manager.UuidManager
-import com.bitwarden.core.data.wear.WearDataChannel
 import com.bitwarden.core.data.wear.WearDataProtocol
 import com.bitwarden.core.data.wear.WearSnapshotFrame
 import com.bitwarden.core.data.wear.WearSnapshotHeader
@@ -31,7 +30,7 @@ import org.junit.Test
 class WearDataSourceTest : BaseRobolectricTest() {
     private val client = mockk<DataClient>()
     private val uuidManager = mockk<UuidManager>()
-    private val source = WearDataSourceImpl(client, uuidManager, WearDataChannel.SYNTHETIC)
+    private val source = WearDataSourceImpl(client, uuidManager)
     private val item = mockk<DataItem>()
     private val packet = WearSnapshotProtocol.encode(WearSnapshotFrame(
         WearSnapshotHeader("22222222-2222-4222-8222-222222222222", 1, "a".repeat(64)),
@@ -42,14 +41,14 @@ class WearDataSourceTest : BaseRobolectricTest() {
     fun setUp() {
         every { uuidManager.generateUuid() } returnsMany listOf("attempt-one", "attempt-two")
         every { item.uri } returns Uri.Builder().scheme("wear").authority("watch")
-            .path(WearDataProtocol.receiptPath(WearDataChannel.SYNTHETIC, "watch")).build()
+            .path(WearDataProtocol.receiptPath("watch")).build()
     }
 
     @Test
     fun `receipt from another owner is rejected even if bytes match`() = runTest {
         every { item.data } returns WearDataProtocol.createReceipt(packet).getOrThrow()
         every { item.uri } returns Uri.Builder().scheme("wear").authority("other-watch")
-            .path(WearDataProtocol.receiptPath(WearDataChannel.SYNTHETIC, "watch")).build()
+            .path(WearDataProtocol.receiptPath("watch")).build()
         every { client.getDataItem(any<Uri>()) } returns completedTask(Result.success(item))
         assertTrue(source.getReceipt("watch").isFailure)
     }
@@ -62,7 +61,7 @@ class WearDataSourceTest : BaseRobolectricTest() {
         assertTrue(source.publish("watch", packet).isSuccess)
         requests.forEach { request ->
             assertEquals(
-                WearDataProtocol.packetPath(WearDataChannel.SYNTHETIC, "watch"), request.uri.path,
+                WearDataProtocol.packetPath("watch"), request.uri.path,
             )
             assertTrue(request.isUrgent)
             assertEquals(
@@ -93,7 +92,7 @@ class WearDataSourceTest : BaseRobolectricTest() {
         assertEquals("wear", uris.single().scheme)
         assertEquals("watch", uris.single().host)
         assertEquals(
-            WearDataProtocol.receiptPath(WearDataChannel.SYNTHETIC, "watch"), uris.single().path,
+            WearDataProtocol.receiptPath("watch"), uris.single().path,
         )
     }
 

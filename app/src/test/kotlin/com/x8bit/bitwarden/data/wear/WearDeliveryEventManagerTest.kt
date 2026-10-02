@@ -1,6 +1,5 @@
 package com.x8bit.bitwarden.data.wear
 
-import com.bitwarden.core.data.wear.WearDataChannel
 import com.bitwarden.core.data.wear.WearDataProtocol
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -18,7 +17,7 @@ class WearDeliveryEventManagerTest {
         coEvery { retry() } returns Result.success(Unit)
     }
     private val manager = WearDeliveryEventManagerImpl(outbox, coordinator, true)
-    private val path = WearDataProtocol.receiptPath(WearDataChannel.PRODUCTION, "watch")
+    private val path = WearDataProtocol.receiptPath("watch")
     private val record = WearOutboxRecord("watch", 1, userId = "user", pendingPacket = "encrypted")
 
     @Test
@@ -40,7 +39,7 @@ class WearDeliveryEventManagerTest {
             Triple("wear", "watch", "$path/extra"),
             Triple("wear", "watch", null),
             Triple(
-                "wear", "watch", WearDataProtocol.receiptPath(WearDataChannel.SYNTHETIC, "watch"),
+                "wear", "watch", "/bitwarden/wear/probe/data/v1/receipts/d2F0Y2g",
             ),
         )) {
             assertTrue(manager.receiptChanged(scheme, owner, route).isSuccess)

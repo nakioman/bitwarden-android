@@ -3,31 +3,6 @@
     xmlns:android="http://schemas.android.com/apk/res/android">
 
     <application tools:ignore="MissingApplicationIcon">
-        <!-- Isolated persistent synthetic outbox and assets; no vault item access. -->
-        <activity
-            android:name="com.x8bit.bitwarden.data.wear.WearPersistentProbeActivity"
-            android:exported="true"
-            android:taskAffinity="${applicationId}.wear.persistent.probe"
-            android:noHistory="true"
-            android:excludeFromRecents="true" />
-        <!-- Explicit synthetic transport test; never accesses vault items. -->
-        <activity
-            android:name="com.x8bit.bitwarden.data.wear.WearSnapshotProbeActivity"
-            android:exported="true"
-            android:taskAffinity="${applicationId}.wear.snapshot.probe"
-            android:noHistory="true"
-            android:excludeFromRecents="true" />
-        <service
-            android:name="com.x8bit.bitwarden.data.wear.WearConnectionListenerService"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="com.google.android.gms.wearable.MESSAGE_RECEIVED" />
-                <data
-                    android:scheme="wear"
-                    android:host="*"
-                    android:path="/bitwarden/wear/connection/v1/ping" />
-            </intent-filter>
-        </service>
         <service
             android:name="com.x8bit.bitwarden.data.push.BitwardenFirebaseMessagingService"
             android:exported="false">

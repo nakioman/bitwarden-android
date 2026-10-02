@@ -15,38 +15,38 @@ class WearDataProtocolTest {
     private val packet = WearSnapshotProtocol.encode(frame).getOrThrow()
 
     @Test
-    fun `paths distinguish channels targets and receipts without raw node path segments`() {
-        val channel = WearDataChannel.SYNTHETIC
-        val path = WearDataProtocol.packetPath(channel, "watch/one")
-        assertTrue(WearDataProtocol.isPacketPath(channel, path, "watch/one"))
-        assertFalse(WearDataProtocol.isPacketPath(channel, path, "watch/two"))
-        assertFalse(WearDataProtocol.isPacketPath(WearDataChannel.PRODUCTION, path, "watch/one"))
+    fun `paths distinguish targets and receipts without raw node path segments`() {
+        val path = WearDataProtocol.packetPath("watch/one")
+        assertTrue(WearDataProtocol.isPacketPath(path, "watch/one"))
+        assertFalse(WearDataProtocol.isPacketPath(path, "watch/two"))
+        assertFalse(WearDataProtocol.isPacketPath(
+            path.replace("/data/", "/probe/data/"), "watch/one",
+        ))
         assertFalse(path.contains("watch/one"))
-        assertNotEquals(path, WearDataProtocol.receiptPath(channel, "watch/one"))
-        assertFalse(WearDataProtocol.isPacketPath(channel, "$path/", "watch/one"))
-        assertFalse(WearDataProtocol.isPacketPath(channel, null, "watch/one"))
+        assertNotEquals(path, WearDataProtocol.receiptPath("watch/one"))
+        assertFalse(WearDataProtocol.isPacketPath("$path/", "watch/one"))
+        assertFalse(WearDataProtocol.isPacketPath(null, "watch/one"))
     }
 
     @Test
     fun `receipt routes bind canonical production path to the owner`() {
-        val channel = WearDataChannel.PRODUCTION
-        val path = WearDataProtocol.receiptPath(channel, "watch")
-        assertTrue(WearDataProtocol.isReceiptPath(channel, path, "watch"))
-        assertFalse(WearDataProtocol.isReceiptPath(channel, path, "other"))
-        assertFalse(WearDataProtocol.isReceiptPath(WearDataChannel.SYNTHETIC, path, "watch"))
-        assertFalse(WearDataProtocol.isReceiptPath(channel, "$path/", "watch"))
-        assertFalse(WearDataProtocol.isReceiptPath(channel, null, "watch"))
-        assertFalse(WearDataProtocol.isReceiptPath(channel, path, ""))
-        assertFalse(WearDataProtocol.isReceiptPath(channel, path, "a".repeat(129)))
+        val path = WearDataProtocol.receiptPath("watch")
+        assertTrue(WearDataProtocol.isReceiptPath(path, "watch"))
+        assertFalse(WearDataProtocol.isReceiptPath(path, "other"))
+        assertFalse(WearDataProtocol.isReceiptPath(path.replace("/data/", "/probe/data/"), "watch"))
+        assertFalse(WearDataProtocol.isReceiptPath("$path/", "watch"))
+        assertFalse(WearDataProtocol.isReceiptPath(null, "watch"))
+        assertFalse(WearDataProtocol.isReceiptPath(path, ""))
+        assertFalse(WearDataProtocol.isReceiptPath(path, "a".repeat(129)))
     }
 
     @Test
     fun `unsafe or unbounded node identifiers cannot become routes`() {
         listOf("", "two words", "line\n", "é", "a".repeat(129)).forEach {
             assertThrows(IllegalArgumentException::class.java) {
-                WearDataProtocol.packetPath(WearDataChannel.SYNTHETIC, it)
+                WearDataProtocol.packetPath(it)
             }
-            assertFalse(WearDataProtocol.isPacketPath(WearDataChannel.SYNTHETIC, "/", it))
+            assertFalse(WearDataProtocol.isPacketPath("/", it))
         }
     }
 
