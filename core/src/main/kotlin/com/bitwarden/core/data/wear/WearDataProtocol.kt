@@ -27,6 +27,9 @@ enum class WearDataChannel(val prefix: String) {
 
 /** Targeted DataItem paths and bounded receipts; callers must authenticate the DataItem owner. */
 object WearDataProtocol {
+    /** Capability declared by the companion app; reconnect hints never grant consent. */
+    const val COMPANION_CAPABILITY = "bitwarden_wear_companion_v1"
+
     /** Asset field containing an encrypted snapshot frame or a revocation. */
     const val PACKET_ASSET = "packet"
     /** A new retry identifier makes unchanged packets generate a new delivery event. */
@@ -45,6 +48,13 @@ object WearDataProtocol {
     /** Rejects unrelated, malformed or noncanonical paths before downloading an asset. */
     fun isPacketPath(channel: WearDataChannel, path: String?, nodeId: String): Boolean = try {
         path == packetPath(channel, nodeId)
+    } catch (_: IllegalArgumentException) {
+        false
+    }
+
+    /** Rejects receipts whose canonical route does not match their DataItem owner. */
+    fun isReceiptPath(channel: WearDataChannel, path: String?, ownerNodeId: String): Boolean = try {
+        path == receiptPath(channel, ownerNodeId)
     } catch (_: IllegalArgumentException) {
         false
     }

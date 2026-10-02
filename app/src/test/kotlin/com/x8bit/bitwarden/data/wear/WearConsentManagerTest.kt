@@ -17,15 +17,20 @@ import org.junit.jupiter.api.Test
 import java.io.IOException
 
 class WearConsentManagerTest {
-    private val user = mockk<UserState> { every { activeUserId } returns "user" }
+    private val user = UserState("user", listOf(
+        UserState.EMPTY_ACCOUNT.copy(userId = "user", isLoggedIn = true),
+    ))
     private val users = MutableStateFlow<UserState?>(user)
     private val auth = mockk<AuthRepository> { every { userStateFlow } returns users }
     private val locks = mockk<VaultLockManager>()
     private val devices = mockk<WearDeviceSource>()
     private val disk = mockk<WearConsentDiskSource>()
     private val keys = mockk<WearKeySource>()
+    private val outbox = mockk<WearOutboxManager> {
+        coEvery { getRecord(any()) } returns Result.success(null)
+    }
     private val manager = WearConsentManagerImpl(
-        devices, disk, auth, locks, FakeDispatcherManager(), keys,
+        devices, disk, WearOtpAccountSourceImpl(auth, locks), FakeDispatcherManager(), keys, outbox,
     )
 
     @BeforeEach

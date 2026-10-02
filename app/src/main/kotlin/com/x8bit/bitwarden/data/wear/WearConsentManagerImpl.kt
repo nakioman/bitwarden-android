@@ -1,22 +1,30 @@
 package com.x8bit.bitwarden.data.wear
 
 import com.bitwarden.core.data.manager.dispatcher.DispatcherManager
-import com.x8bit.bitwarden.data.auth.repository.AuthRepository
-import com.x8bit.bitwarden.data.vault.manager.VaultLockManager
+import com.bitwarden.core.data.wear.WearSnapshotProtocol
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.util.Base64
 
-/** Guards consent with the active account and retains revocations for later synchronization. */
+/**
+ * Guards explicit consent and retains revocations for later synchronization.
+ *
+ * @property deviceSource Reachable companion discovery.
+ * @property diskSource Atomic account-scoped permission ledger.
+ * @property accountSource Active logged-in unlocked account guard.
+ * @property dispatcherManager Worker dispatcher for key and disk operations.
+ * @property keySource Authenticated recipient key exchange.
+ * @property outbox Durable enrollment and exact revocation acknowledgment metadata.
+ */
 class WearConsentManagerImpl(
     private val deviceSource: WearDeviceSource,
     private val diskSource: WearConsentDiskSource,
-    private val authRepository: AuthRepository,
-    private val vaultLockManager: VaultLockManager,
+    private val accountSource: WearOtpAccountSource,
     private val dispatcherManager: DispatcherManager,
     private val keySource: WearKeySource,
+    private val outbox: WearOutboxManager,
 ) : WearConsentManager {
     private val mutex = Mutex()
 
@@ -47,7 +55,7 @@ class WearConsentManagerImpl(
             val decision = WearConsent(
                 userId, device.id, device.name, enabled, previous?.publicKey,
             )
-            val pinned = resolveKey(decision) ?: return@withLock WearConsentResult.Error
+            val pinned = resolveKey(decision, previous) ?: return@withLock WearConsentResult.Error
             if (!isAccountUnlocked(userId)) return@withLock WearConsentResult.VaultLocked
             if (!storeDecision(consents, pinned)) return@withLock WearConsentResult.Error
             if (!isAccountUnlocked(userId)) return@withLock WearConsentResult.VaultLocked
@@ -66,8 +74,9 @@ class WearConsentManagerImpl(
     ): WearConsentResult {
         val consents = diskSource.getConsents().getOrNull() ?: return WearConsentResult.Error
         val updated = consents.toMutableList()
-        val candidates = consents.withIndex().filter {
-            shouldVerifyKey(it.value, userId, result.devices)
+        val candidates = consents.withIndex().filter { (_, consent) ->
+            consent.userId == userId && consent.isAuthorized &&
+                result.devices.any { it.id == consent.deviceId && it.isReachable }
         }
         for ((index, consent) in candidates) {
             if (!isAccountUnlocked(userId)) return WearConsentResult.VaultLocked
@@ -83,13 +92,6 @@ class WearConsentManagerImpl(
         return result
     }
 
-    private fun shouldVerifyKey(
-        consent: WearConsent,
-        userId: String,
-        devices: List<WearConsentDevice>,
-    ): Boolean = consent.userId == userId && consent.isAuthorized &&
-        devices.any { it.id == consent.deviceId && it.isReachable }
-
     private fun storeDecision(consents: List<WearConsent>, decision: WearConsent): Boolean =
         diskSource.compareAndSetConsents(
             consents,
@@ -98,8 +100,43 @@ class WearConsentManagerImpl(
             } + decision,
         ).isSuccess
 
-    private suspend fun resolveKey(consent: WearConsent): WearConsent? =
-        if (consent.isAuthorized) verifyKey(consent) else consent
+    private suspend fun resolveKey(consent: WearConsent, previous: WearConsent?): WearConsent? {
+        if (!consent.isAuthorized) return consent
+        val record = outbox.getRecord(consent.deviceId).getOrElse { return null }
+        if (!canAuthorize(record, previous, consent.userId)) return null
+        val key = keySource.getPublicKey(consent.deviceId).getOrNull() ?: return null
+        val encoded = Base64.getEncoder().encodeToString(key)
+        val keyId = WearSnapshotProtocol.recipientKeyId(key)
+        if (!matchesEnrollmentKey(record, keyId)) return null
+        // Only an explicit enable after withdrawal can replace a pin. Refresh stays strict.
+        val canReplacePin = previous?.isAuthorized != true &&
+            (record?.lastHeader == null || record.lastHeader.isRevocation)
+        if (consent.publicKey != null && consent.publicKey != encoded && !canReplacePin) return null
+        if (outbox.getRecord(consent.deviceId).getOrElse { return null } != record) return null
+        return consent.copy(publicKey = encoded)
+    }
+
+    private fun canAuthorize(
+        record: WearOutboxRecord?,
+        previous: WearConsent?,
+        userId: String,
+    ): Boolean {
+        val header = record?.lastHeader ?: return true
+        return if (header.isRevocation) {
+            record.pendingPacket == null
+        } else {
+            record.userId == userId && previous?.isAuthorized != false
+        }
+    }
+
+    private fun matchesEnrollmentKey(record: WearOutboxRecord?, keyId: String): Boolean {
+        val header = record?.lastHeader ?: return true
+        return if (header.isRevocation) {
+            header.recipientKeyId != keyId
+        } else {
+            header.recipientKeyId == keyId
+        }
+    }
 
     private suspend fun verifyKey(consent: WearConsent): WearConsent? {
         val key = keySource.getPublicKey(consent.deviceId).getOrNull() ?: return null
@@ -134,6 +171,5 @@ class WearConsentManagerImpl(
     }
 
     private fun isAccountUnlocked(userId: String): Boolean =
-        authRepository.userStateFlow.value?.activeUserId == userId &&
-            vaultLockManager.isVaultUnlocked(userId)
+        accountSource.getAccount(userId) != null
 }

@@ -3,14 +3,14 @@ package com.x8bit.bitwarden.data.wear.di
 import android.content.SharedPreferences
 import com.bitwarden.core.data.manager.dispatcher.DispatcherManager
 import com.bitwarden.data.datasource.disk.di.KeystoreEncryptedPreferences
-import com.x8bit.bitwarden.data.auth.repository.AuthRepository
-import com.x8bit.bitwarden.data.vault.manager.VaultLockManager
 import com.x8bit.bitwarden.data.wear.WearConsentDiskSource
 import com.x8bit.bitwarden.data.wear.WearConsentDiskSourceImpl
 import com.x8bit.bitwarden.data.wear.WearConsentManager
 import com.x8bit.bitwarden.data.wear.WearConsentManagerImpl
 import com.x8bit.bitwarden.data.wear.WearDeviceSource
 import com.x8bit.bitwarden.data.wear.WearKeySource
+import com.x8bit.bitwarden.data.wear.WearOtpAccountSource
+import com.x8bit.bitwarden.data.wear.WearOutboxManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -36,11 +36,11 @@ object WearConsentModule {
     fun provideWearConsentManager(
         deviceSource: WearDeviceSource,
         diskSource: WearConsentDiskSource,
-        authRepository: AuthRepository,
-        vaultLockManager: VaultLockManager,
+        accountSource: WearOtpAccountSource,
         dispatcherManager: DispatcherManager,
         keySource: WearKeySource,
+        outbox: WearOutboxManager,
     ): WearConsentManager = WearConsentManagerImpl(
-        deviceSource, diskSource, authRepository, vaultLockManager, dispatcherManager, keySource,
+        deviceSource, diskSource, accountSource, dispatcherManager, keySource, outbox,
     )
 }

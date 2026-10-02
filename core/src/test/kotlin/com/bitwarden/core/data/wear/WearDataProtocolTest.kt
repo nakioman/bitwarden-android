@@ -28,6 +28,19 @@ class WearDataProtocolTest {
     }
 
     @Test
+    fun `receipt routes bind canonical production path to the owner`() {
+        val channel = WearDataChannel.PRODUCTION
+        val path = WearDataProtocol.receiptPath(channel, "watch")
+        assertTrue(WearDataProtocol.isReceiptPath(channel, path, "watch"))
+        assertFalse(WearDataProtocol.isReceiptPath(channel, path, "other"))
+        assertFalse(WearDataProtocol.isReceiptPath(WearDataChannel.SYNTHETIC, path, "watch"))
+        assertFalse(WearDataProtocol.isReceiptPath(channel, "$path/", "watch"))
+        assertFalse(WearDataProtocol.isReceiptPath(channel, null, "watch"))
+        assertFalse(WearDataProtocol.isReceiptPath(channel, path, ""))
+        assertFalse(WearDataProtocol.isReceiptPath(channel, path, "a".repeat(129)))
+    }
+
+    @Test
     fun `unsafe or unbounded node identifiers cannot become routes`() {
         listOf("", "two words", "line\n", "é", "a".repeat(129)).forEach {
             assertThrows(IllegalArgumentException::class.java) {

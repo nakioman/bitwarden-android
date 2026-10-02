@@ -7,13 +7,16 @@ import com.x8bit.bitwarden.data.wear.WearDataSource
 import com.x8bit.bitwarden.data.wear.WearDeliveryManager
 import com.x8bit.bitwarden.data.wear.WearDeliveryManagerImpl
 import com.x8bit.bitwarden.data.wear.WearOutboxManager
+import com.x8bit.bitwarden.data.wear.WearDeliveryEventManager
+import com.x8bit.bitwarden.data.wear.WearDeliveryEventManagerImpl
+import com.x8bit.bitwarden.data.wear.WearSyncCoordinator
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
-/** Provides authorized delivery without automatically starting real OTP synchronization. */
+/** Provides authorized delivery and authenticated transport event processing. */
 @Module
 @InstallIn(SingletonComponent::class)
 object WearDeliveryModule {
@@ -29,4 +32,11 @@ object WearDeliveryModule {
     ): WearDeliveryManager = WearDeliveryManagerImpl(
         outbox, consentSource, authRepository, dataSource, dispatcherManager,
     )
+    /** Processes hints without granting permission or accepting unverified acknowledgment data. */
+    @Provides
+    @Singleton
+    fun provideWearDeliveryEventManager(
+        outbox: WearOutboxManager,
+        coordinator: WearSyncCoordinator,
+    ): WearDeliveryEventManager = WearDeliveryEventManagerImpl(outbox, coordinator)
 }

@@ -19,7 +19,9 @@ import org.junit.jupiter.api.Test
 class WearConsentAtomicityTest {
     private val disk = WearConsentDiskSourceImpl(FakeSharedPreferences(), Json)
     private val initial = WearConsent("user", "watch", "Watch", true)
-    private val user = mockk<UserState> { every { activeUserId } returns "user" }
+    private val user = UserState("user", listOf(
+        UserState.EMPTY_ACCOUNT.copy(userId = "user", isLoggedIn = true),
+    ))
     private val auth = mockk<AuthRepository> {
         every { userStateFlow } returns MutableStateFlow(user)
     }
@@ -28,8 +30,11 @@ class WearConsentAtomicityTest {
     }
     private val devices = mockk<WearDeviceSource> { every { isSupported } returns true }
     private val keys = mockk<WearKeySource>()
+    private val outbox = mockk<WearOutboxManager> {
+        coEvery { getRecord(any()) } returns Result.success(null)
+    }
     private val manager = WearConsentManagerImpl(
-        devices, disk, auth, locks, FakeDispatcherManager(), keys,
+        devices, disk, WearOtpAccountSourceImpl(auth, locks), FakeDispatcherManager(), keys, outbox,
     )
 
     @Test
