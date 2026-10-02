@@ -69,6 +69,7 @@ configure<ApplicationExtension> {
 dependencies {
     implementation(project(":core"))
     implementation(project(":ui"))
+    implementation(libs.bitwarden.sdk)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.hilt.navigation.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
