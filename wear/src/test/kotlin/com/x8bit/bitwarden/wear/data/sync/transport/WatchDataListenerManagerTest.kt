@@ -1,4 +1,4 @@
-package com.x8bit.bitwarden.wear.debug.data
+package com.x8bit.bitwarden.wear.data.sync.transport
 
 import android.net.Uri
 import com.bitwarden.core.data.wear.WearDataChannel

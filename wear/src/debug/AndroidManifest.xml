@@ -1,17 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application>
-        <service
-            android:name=".debug.WearDataListenerService"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
-                <data
-                    android:scheme="wear"
-                    android:host="*"
-                    android:pathPrefix="/bitwarden/wear/data/v1/packets/" />
-            </intent-filter>
-        </service>
         <!-- Persistent synthetic assets; isolated from production keys and caches. -->
         <service
             android:name=".debug.WearPersistentProbeService"
@@ -39,17 +28,6 @@
                     android:scheme="wear"
                     android:host="*"
                     android:pathPrefix="/bitwarden/wear/probe/snapshot/v1/" />
-            </intent-filter>
-        </service>
-        <service
-            android:name=".debug.WearKeyListenerService"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="com.google.android.gms.wearable.REQUEST_RECEIVED" />
-                <data
-                    android:scheme="wear"
-                    android:host="*"
-                    android:path="/bitwarden/wear/keys/v1/public" />
             </intent-filter>
         </service>
         <!-- Synthetic data only; separate from companion keys and snapshots. -->

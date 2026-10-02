@@ -9,7 +9,7 @@ import com.google.android.gms.wearable.DataEventBuffer
 import com.google.android.gms.wearable.DataItem
 import com.google.android.gms.wearable.WearableListenerService
 import com.x8bit.bitwarden.wear.data.sync.WatchSnapshotManager
-import com.x8bit.bitwarden.wear.debug.data.WatchDataTransport
+import com.x8bit.bitwarden.wear.data.sync.transport.WatchDataTransport
 import com.x8bit.bitwarden.wear.debug.di.SnapshotTransportProbe
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CancellationException

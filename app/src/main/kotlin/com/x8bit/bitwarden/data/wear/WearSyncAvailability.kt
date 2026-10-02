@@ -2,8 +2,8 @@ package com.x8bit.bitwarden.data.wear
 
 import com.x8bit.bitwarden.BuildConfig
 
-/** Temporary availability policy while companion encryption and enrollment are being completed. */
+/** Enables the companion only in the flavor that provides Google Play services. */
 object WearSyncAvailability {
-    /** Enables the in-progress flow only in the Google Play development variant. */
-    val isEnabled: Boolean = BuildConfig.DEBUG && BuildConfig.FLAVOR == "standard"
+    /** Supported consistently in debug, beta and release; F-Droid has no Data Layer transport. */
+    val isEnabled: Boolean = BuildConfig.FLAVOR == "standard"
 }

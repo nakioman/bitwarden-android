@@ -87,7 +87,7 @@ dependencies {
     implementation(libs.androidx.splashscreen)
     implementation(libs.kotlinx.coroutines.core)
     debugImplementation(libs.androidx.compose.ui.tooling)
-    debugImplementation(libs.google.play.services.wearable)
+    implementation(libs.google.play.services.wearable)
 
     testImplementation(testFixtures(project(":core")))
     testImplementation(testFixtures(project(":ui")))

@@ -1,12 +1,10 @@
-package com.x8bit.bitwarden.wear.debug
+package com.x8bit.bitwarden.wear.data.sync
 
-import android.util.Log
 import com.bitwarden.core.data.manager.dispatcher.DispatcherManager
 import com.bitwarden.core.data.wear.WearKeyProtocol
 import com.google.android.gms.tasks.Task
 import com.google.android.gms.tasks.TaskCompletionSource
 import com.google.android.gms.wearable.WearableListenerService
-import com.x8bit.bitwarden.wear.data.sync.WatchSnapshotManager
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -15,9 +13,7 @@ import kotlinx.coroutines.launch
 import java.io.IOException
 import javax.inject.Inject
 
-private const val TAG = "WearEnrollment"
-
-/** Debug-only public-key endpoint. It never reads secrets or accepts snapshots. */
+/** Public-key endpoint. It never reads secrets or accepts snapshots. */
 @AndroidEntryPoint
 class WearKeyListenerService : WearableListenerService() {
     /** Provisioning requires a secure watch screen lock, including while locked. */
@@ -46,11 +42,9 @@ class WearKeyListenerService : WearableListenerService() {
                 .fold(
                     onSuccess = {
                         completion.trySetResult(it)
-                        Log.i(TAG, "Watch answered public key request")
                     },
                     onFailure = {
                         completion.trySetException(IOException("Public key unavailable"))
-                        Log.i(TAG, "Watch denied public key request")
                     },
                 )
         }.invokeOnCompletion { error ->

@@ -1,12 +1,12 @@
-package com.x8bit.bitwarden.wear.debug.di
+package com.x8bit.bitwarden.wear.data.sync.di
 
 import android.content.Context
 import com.google.android.gms.wearable.Wearable
 import com.x8bit.bitwarden.wear.data.sync.WatchDataReceiver
-import com.x8bit.bitwarden.wear.debug.data.WatchDataListenerManager
-import com.x8bit.bitwarden.wear.debug.data.WatchDataListenerManagerImpl
-import com.x8bit.bitwarden.wear.debug.data.WatchDataTransport
-import com.x8bit.bitwarden.wear.debug.data.WatchDataTransportImpl
+import com.x8bit.bitwarden.wear.data.sync.transport.WatchDataListenerManager
+import com.x8bit.bitwarden.wear.data.sync.transport.WatchDataListenerManagerImpl
+import com.x8bit.bitwarden.wear.data.sync.transport.WatchDataTransport
+import com.x8bit.bitwarden.wear.data.sync.transport.WatchDataTransportImpl
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -14,7 +14,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
-/** Binds Google Play transport only in the currently enabled debug companion build. */
+/** Binds Google Play transport in all companion build types. */
 @Module
 @InstallIn(SingletonComponent::class)
 object WatchDataModule {

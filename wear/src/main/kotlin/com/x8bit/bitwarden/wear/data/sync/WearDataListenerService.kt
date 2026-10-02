@@ -1,10 +1,10 @@
-package com.x8bit.bitwarden.wear.debug
+package com.x8bit.bitwarden.wear.data.sync
 
 import com.bitwarden.core.data.manager.dispatcher.DispatcherManager
 import com.google.android.gms.wearable.DataEvent
 import com.google.android.gms.wearable.DataEventBuffer
 import com.google.android.gms.wearable.WearableListenerService
-import com.x8bit.bitwarden.wear.debug.data.WatchDataListenerManager
+import com.x8bit.bitwarden.wear.data.sync.transport.WatchDataListenerManager
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
