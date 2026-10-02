@@ -5,6 +5,9 @@ package com.x8bit.bitwarden.data.wear
  * Callers must authenticate the companion and enforce consent before enqueueing or sending.
  */
 interface WearOutboxManager {
+    /** Reads validated enrollment metadata under the same lock used for queue mutations. */
+    suspend fun getRecord(deviceId: String): Result<WearOutboxRecord?>
+
     /** Reserves a strictly increasing revision before encryption, even if preparation fails. */
     suspend fun reserveRevision(deviceId: String): Result<Long>
 

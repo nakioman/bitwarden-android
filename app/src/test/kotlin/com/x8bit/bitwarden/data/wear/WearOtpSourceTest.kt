@@ -1,8 +1,7 @@
 package com.x8bit.bitwarden.data.wear
 
-import com.bitwarden.core.data.wear.WearOtpEntry
-
 import com.bitwarden.core.data.manager.dispatcher.FakeDispatcherManager
+import com.bitwarden.core.data.wear.WearOtpEntry
 import com.bitwarden.network.model.CipherRepromptTypeJson
 import com.bitwarden.network.model.SyncResponseJson
 import com.bitwarden.network.model.createMockCipher
@@ -17,6 +16,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -49,6 +49,18 @@ class WearOtpSourceTest {
         every { consents.getConsents() } returns Result.success(listOf(consent))
         coEvery { disk.getLoginCiphers("user") } returns listOf(encrypted(1))
         coEvery { sdk.decryptCipher("user", any()) } returns Result.success(createMockCipherView(1))
+    }
+
+    @Test
+    fun `canceled SDK read propagates cancellation without returning entries`() = runTest {
+        coEvery { sdk.decryptCipher("user", any()) } throws CancellationException()
+        var canceled = false
+        try {
+            source.getEntries("user", "watch")
+        } catch (_: CancellationException) {
+            canceled = true
+        }
+        assertTrue(canceled)
     }
 
     @Test

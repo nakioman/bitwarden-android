@@ -16,6 +16,11 @@ class WearOutboxManagerImpl(
 ) : WearOutboxManager {
     private val mutex = Mutex()
 
+    override suspend fun getRecord(deviceId: String): Result<WearOutboxRecord?> = serialized {
+        validateDeviceId(deviceId)
+        load().singleOrNull { it.deviceId == deviceId }
+    }
+
     override suspend fun reserveRevision(deviceId: String): Result<Long> = serialized {
         validateDeviceId(deviceId)
         val records = load()

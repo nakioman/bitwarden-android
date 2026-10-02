@@ -1,9 +1,8 @@
 package com.x8bit.bitwarden.data.wear
 
-import com.bitwarden.core.data.wear.WearOtpEntry
-
 import android.database.sqlite.SQLiteException
 import com.bitwarden.core.data.manager.dispatcher.DispatcherManager
+import com.bitwarden.core.data.wear.WearOtpEntry
 import com.bitwarden.network.model.CipherRepromptTypeJson
 import com.bitwarden.network.model.SyncResponseJson
 import com.bitwarden.vault.CipherRepromptType
@@ -13,6 +12,7 @@ import com.x8bit.bitwarden.data.auth.repository.model.UserState
 import com.x8bit.bitwarden.data.vault.datasource.disk.VaultDiskSource
 import com.x8bit.bitwarden.data.vault.datasource.sdk.VaultSdkSource
 import com.x8bit.bitwarden.data.vault.repository.util.toEncryptedSdkCipher
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withContext
 import java.io.IOException
 
@@ -40,6 +40,8 @@ class WearOtpSourceImpl(
     ): Result<List<WearOtpEntry>> = withContext(dispatcherManager.io) {
         try {
             loadEntries(userId, deviceId)
+        } catch (error: CancellationException) {
+            throw error
         } catch (_: IOException) {
             failure()
         } catch (_: SQLiteException) {

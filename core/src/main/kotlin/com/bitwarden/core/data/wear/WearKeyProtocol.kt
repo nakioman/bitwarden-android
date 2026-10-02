@@ -24,6 +24,11 @@ object WearKeyProtocol {
     /** RPC endpoint exposing only the watch's public encryption key. */
     const val KEY_PATH = "/bitwarden/wear/keys/v1/public"
 
+    /** Checks a pinned key without performing another network discovery request. */
+    fun validatePublicKey(publicKey: ByteArray): Result<Unit> = protocolResult {
+        validateKey(publicKey)
+    }
+
     /** Creates a fresh challenge to correlate this request with its response. */
     fun createRequest(): ByteArray = byteArrayOf(KEY_VERSION) +
         ByteArray(CHALLENGE_BYTES).also { SecureRandom().nextBytes(it) }

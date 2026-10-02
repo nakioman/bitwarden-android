@@ -136,6 +136,7 @@ class WearOutboxManagerTest {
         val broken = WearOutboxManagerImpl(unreadable, FakeDispatcherManager())
         assertTrue(broken.reserveRevision("watch").isFailure)
         assertTrue(broken.getPending().isFailure)
+        assertTrue(broken.getRecord("watch").isFailure)
     }
 
     @Test
