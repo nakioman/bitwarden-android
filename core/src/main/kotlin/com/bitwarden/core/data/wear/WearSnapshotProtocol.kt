@@ -1,5 +1,6 @@
 package com.bitwarden.core.data.wear
 
+import kotlinx.serialization.Serializable
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.DataInputStream
@@ -16,6 +17,7 @@ private const val MAX_FRAME_BYTES = MAX_CIPHERTEXT_BYTES + 128
 private const val KEY_ID_LENGTH = 64
 
 /** Non-secret routing information, authenticated by the payload cipher as associated data. */
+@Serializable
 data class WearSnapshotHeader(
     val enrollmentId: String,
     val revision: Long,

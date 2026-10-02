@@ -49,11 +49,13 @@ class WatchSnapshotManagerImpl(
                 }
                 val record = loadRecord().getOrElse { return@withLock Result.failure(it) }
                 if (record != null && record.sourceNodeId != sourceNodeId) return@withLock denied()
-                if (!frame.header.isRevocation && !keyManager.isCurrentRecipient(frame)) {
+                if ((record == null || !frame.header.isRevocation) &&
+                    !keyManager.isCurrentRecipient(frame)
+                ) {
                     return@withLock denied()
                 }
                 if (record?.matches(packet) == true) return@withLock completeCommand(frame)
-                if (!(record?.allows(frame) ?: !frame.header.isRevocation)) return@withLock denied()
+                if (record != null && !record.allows(frame)) return@withLock denied()
                 val encoded = WatchSnapshotRecord(sourceNodeId, frame).encode().getOrElse {
                     return@withLock Result.failure(it)
                 }

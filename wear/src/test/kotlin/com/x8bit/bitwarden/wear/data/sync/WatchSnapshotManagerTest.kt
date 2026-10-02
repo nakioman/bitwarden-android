@@ -48,6 +48,41 @@ class WatchSnapshotManagerTest {
     }
 
     @Test
+    fun `initial revocation can erase a current key before any snapshot arrives`() = runTest {
+        every { security.getStatus() } returns WatchSecurityStatus.LOCKED
+        val revoke = packet(header.copy(revision = 2, isRevocation = true), byteArrayOf())
+        assertTrue(manager.receive("phone", revoke).isSuccess)
+        assertTrue(WatchSnapshotRecord.decode(requireNotNull(saved)).getOrThrow()
+            .frame.header.isRevocation)
+        verifyOrder {
+            disk.write(any())
+            keys.deleteKey()
+        }
+        assertTrue(manager.receive("phone", packet()).isFailure)
+        verify(exactly = 0) { keys.decrypt(any(), any()) }
+    }
+
+    @Test
+    fun `initial revocation with a different recipient cannot bind or erase a key`() = runTest {
+        val revoke = packet(
+            header.copy(isRevocation = true, recipientKeyId = "0".repeat(64)), byteArrayOf(),
+        )
+        assertTrue(manager.receive("phone", revoke).isFailure)
+        verify(exactly = 0) { disk.write(any()) }
+        verify(exactly = 0) { keys.deleteKey() }
+    }
+
+    @Test
+    fun `failed initial revocation persistence keeps the recipient key`() = runTest {
+        every { disk.write(any()) } returns Result.failure(IOException())
+        assertTrue(
+            manager.receive("phone", packet(header.copy(isRevocation = true), byteArrayOf()))
+                .isFailure,
+        )
+        verify(exactly = 0) { keys.deleteKey() }
+    }
+
+    @Test
     fun `locked reception persists source revision and ciphertext without decryption`() = runTest {
         every { security.getStatus() } returns WatchSecurityStatus.LOCKED
         assertTrue(manager.receive("phone", packet()).isSuccess)
