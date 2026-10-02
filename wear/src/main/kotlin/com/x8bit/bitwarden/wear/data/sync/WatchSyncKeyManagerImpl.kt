@@ -15,20 +15,18 @@ private const val RECIPIENT_KEY_ALIAS = "bitwarden.wear.sync.recipient.v1"
 private const val RECIPIENT_KEY_BITS = 2048
 
 /** Uses the system unlock, without introducing a second app credential or authentication timer. */
-class WatchSyncKeyManagerImpl(
-    private val keyAlias: String = RECIPIENT_KEY_ALIAS,
-) : WatchSyncKeyManager {
+class WatchSyncKeyManagerImpl : WatchSyncKeyManager {
     private val keyStore: KeyStore by lazy {
         KeyStore.getInstance(KEYSTORE_PROVIDER).apply { load(null) }
     }
 
     override fun createPublicKey(): Result<ByteArray> = keyResult {
-        if (!keyStore.containsAlias(keyAlias)) {
+        if (!keyStore.containsAlias(RECIPIENT_KEY_ALIAS)) {
             KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_RSA, KEYSTORE_PROVIDER)
                 .apply {
                     initialize(
                         KeyGenParameterSpec.Builder(
-                            keyAlias,
+                            RECIPIENT_KEY_ALIAS,
                             KeyProperties.PURPOSE_DECRYPT,
                         )
                             .setKeySize(RECIPIENT_KEY_BITS)
@@ -44,18 +42,18 @@ class WatchSyncKeyManagerImpl(
     }
 
     override fun getPublicKey(): Result<ByteArray> = keyResult {
-        keyStore.getCertificate(keyAlias)?.publicKey?.encoded
+        keyStore.getCertificate(RECIPIENT_KEY_ALIAS)?.publicKey?.encoded
             ?: throw IOException("Companion key missing; provision again")
     }
 
     override fun decrypt(envelope: ByteArray, context: ByteArray): Result<ByteArray> = keyResult {
-        val privateKey = keyStore.getKey(keyAlias, null) as? PrivateKey
+        val privateKey = keyStore.getKey(RECIPIENT_KEY_ALIAS, null) as? PrivateKey
             ?: throw IOException("Companion key missing; provision again")
         WearPayloadCipher.decrypt(privateKey, envelope, context).getOrThrow()
     }
 
     override fun deleteKey(): Result<Unit> = keyResult {
-        keyStore.deleteEntry(keyAlias)
+        keyStore.deleteEntry(RECIPIENT_KEY_ALIAS)
     }
 
     private inline fun <T> keyResult(block: () -> T): Result<T> = try {
