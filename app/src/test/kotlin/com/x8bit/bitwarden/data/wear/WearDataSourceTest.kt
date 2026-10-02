@@ -41,6 +41,17 @@ class WearDataSourceTest : BaseRobolectricTest() {
     @Before
     fun setUp() {
         every { uuidManager.generateUuid() } returnsMany listOf("attempt-one", "attempt-two")
+        every { item.uri } returns Uri.Builder().scheme("wear").authority("watch")
+            .path(WearDataProtocol.receiptPath(WearDataChannel.SYNTHETIC, "watch")).build()
+    }
+
+    @Test
+    fun `receipt from another owner is rejected even if bytes match`() = runTest {
+        every { item.data } returns WearDataProtocol.createReceipt(packet).getOrThrow()
+        every { item.uri } returns Uri.Builder().scheme("wear").authority("other-watch")
+            .path(WearDataProtocol.receiptPath(WearDataChannel.SYNTHETIC, "watch")).build()
+        every { client.getDataItem(any<Uri>()) } returns completedTask(Result.success(item))
+        assertTrue(source.getReceipt("watch").isFailure)
     }
 
     @Test

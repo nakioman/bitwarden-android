@@ -46,6 +46,7 @@ class WearDataSourceImpl(
         val uri = Uri.Builder().scheme("wear").authority(deviceId)
             .path(WearDataProtocol.receiptPath(channel, deviceId)).build()
         val item = dataClient.getDataItem(uri).awaitData().getOrThrow()
+        require(item == null || item.uri == uri)
         val receipt = item?.data
         require(receipt == null || receipt.size <= WearDataProtocol.MAX_RECEIPT_BYTES)
         receipt?.copyOf()

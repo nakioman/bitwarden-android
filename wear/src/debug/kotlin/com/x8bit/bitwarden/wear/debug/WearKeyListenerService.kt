@@ -6,7 +6,7 @@ import com.bitwarden.core.data.wear.WearKeyProtocol
 import com.google.android.gms.tasks.Task
 import com.google.android.gms.tasks.TaskCompletionSource
 import com.google.android.gms.wearable.WearableListenerService
-import com.x8bit.bitwarden.wear.data.sync.WatchSecureStorageManager
+import com.x8bit.bitwarden.wear.data.sync.WatchSnapshotManager
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -22,7 +22,7 @@ private const val TAG = "WearEnrollment"
 class WearKeyListenerService : WearableListenerService() {
     /** Provisioning requires a secure watch screen lock, including while locked. */
     @Inject
-    lateinit var storageManager: WatchSecureStorageManager
+    lateinit var storageManager: WatchSnapshotManager
 
     /** Provides the service worker dispatcher. */
     @Inject
