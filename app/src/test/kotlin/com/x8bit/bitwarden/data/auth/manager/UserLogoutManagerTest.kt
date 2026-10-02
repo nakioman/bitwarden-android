@@ -20,6 +20,7 @@ import com.x8bit.bitwarden.data.tools.generator.datasource.disk.GeneratorDiskSou
 import com.x8bit.bitwarden.data.tools.generator.datasource.disk.PasswordHistoryDiskSource
 import com.x8bit.bitwarden.data.vault.datasource.disk.VaultDiskSource
 import com.x8bit.bitwarden.data.vault.datasource.sdk.VaultSdkSource
+import com.x8bit.bitwarden.data.wear.WearConsentRevoker
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -27,6 +28,7 @@ import io.mockk.just
 import io.mockk.mockk
 import io.mockk.runs
 import io.mockk.verify
+import io.mockk.verifyOrder
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import java.time.Instant
@@ -72,6 +74,10 @@ class UserLogoutManagerTest {
         every { shouldClearOnSoftLogout(userId = any()) } returns true
     }
 
+    private val wearConsentRevoker = mockk<WearConsentRevoker> {
+        every { revokeAccount(any()) } returns Result.success(Unit)
+    }
+
     private val userLogoutManager: UserLogoutManager =
         UserLogoutManagerImpl(
             authDiskSource = authDiskSource,
@@ -85,7 +91,28 @@ class UserLogoutManagerTest {
             dispatcherManager = FakeDispatcherManager(),
             credentialExchangeRegistryManager = credentialExchangeRegistryManager,
             userNotificationPolicyManager = userNotificationPolicyManager,
+            wearConsentRevoker = wearConsentRevoker,
         )
+
+    @Test
+    fun `logout withdraws companion consent before clearing account credentials`() {
+        every { authDiskSource.userState } returns SINGLE_USER_STATE_1
+        userLogoutManager.logout(USER_ID_1, LogoutReason.Timeout)
+        verifyOrder {
+            wearConsentRevoker.revokeAccount(USER_ID_1)
+            authDiskSource.userState = null
+            authDiskSource.clearData(USER_ID_1)
+        }
+    }
+
+    @Test
+    fun `companion persistence failure does not prevent local logout`() {
+        every { authDiskSource.userState } returns SINGLE_USER_STATE_1
+        every { wearConsentRevoker.revokeAccount(any()) } returns
+            Result.failure(java.io.IOException("unavailable"))
+        userLogoutManager.logout(USER_ID_1, LogoutReason.Timeout)
+        assertDataCleared(USER_ID_1)
+    }
 
     @Suppress("MaxLineLength")
     @Test

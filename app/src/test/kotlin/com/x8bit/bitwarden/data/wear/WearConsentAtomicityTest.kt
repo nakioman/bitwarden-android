@@ -1,5 +1,6 @@
 package com.x8bit.bitwarden.data.wear
 
+import app.cash.turbine.test
 import com.bitwarden.core.data.manager.dispatcher.FakeDispatcherManager
 import com.bitwarden.data.datasource.disk.base.FakeSharedPreferences
 import com.x8bit.bitwarden.data.auth.repository.AuthRepository
@@ -30,6 +31,23 @@ class WearConsentAtomicityTest {
     private val manager = WearConsentManagerImpl(
         devices, disk, auth, locks, FakeDispatcherManager(), keys,
     )
+
+    @Test
+    fun `successful commit signals observers and later subscribers reload the ledger`() = runTest {
+        disk.changes.test {
+            awaitItem()
+            assertTrue(disk.compareAndSetConsents(emptyList(), listOf(initial)).isSuccess)
+            awaitItem()
+            assertTrue(disk.compareAndSetConsents(emptyList(), emptyList()).isFailure)
+            expectNoEvents()
+            cancelAndIgnoreRemainingEvents()
+        }
+        disk.changes.test {
+            awaitItem()
+            assertEquals(listOf(initial), disk.getConsents().getOrThrow())
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
 
     @Test
     fun `stale key verification cannot restore revoked consent`() = runTest {

@@ -11,6 +11,8 @@ import com.x8bit.bitwarden.data.platform.manager.event.OrganizationEventManager
 import com.x8bit.bitwarden.data.platform.manager.network.NetworkConfigManager
 import com.x8bit.bitwarden.data.platform.manager.restriction.RestrictionManager
 import com.x8bit.bitwarden.data.platform.repository.EnvironmentRepository
+import com.x8bit.bitwarden.data.wear.WearSyncAvailability
+import com.x8bit.bitwarden.data.wear.WearSyncLifecycleManager
 import dagger.hilt.android.HiltAndroidApp
 import timber.log.Timber
 import javax.inject.Inject
@@ -50,12 +52,16 @@ class BitwardenApplication : Application() {
     @Inject
     lateinit var environmentRepository: EnvironmentRepository
 
+    @Inject
+    lateinit var wearSyncLifecycleManager: WearSyncLifecycleManager
+
     override fun onCreate() {
         super.onCreate()
         // These must be initialized in order to ensure that the restrictionManager does not
         // override the environmentRepository values.
         restrictionManager.initialize()
         environmentRepository.initialize()
+        if (WearSyncAvailability.isEnabled) wearSyncLifecycleManager.initialize()
     }
 
     override fun onLowMemory() {

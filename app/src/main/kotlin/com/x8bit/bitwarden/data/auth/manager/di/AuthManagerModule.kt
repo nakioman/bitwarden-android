@@ -45,6 +45,7 @@ import com.x8bit.bitwarden.data.tools.generator.datasource.disk.PasswordHistoryD
 import com.x8bit.bitwarden.data.vault.datasource.disk.VaultDiskSource
 import com.x8bit.bitwarden.data.vault.datasource.sdk.VaultSdkSource
 import com.x8bit.bitwarden.data.vault.manager.VaultLockManager
+import com.x8bit.bitwarden.data.wear.WearConsentRevoker
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -148,6 +149,7 @@ object AuthManagerModule {
         dispatcherManager: DispatcherManager,
         credentialExchangeRegistryManager: CredentialExchangeRegistryManager,
         userNotificationPolicyManager: UserNotificationPolicyManager,
+        wearConsentRevoker: WearConsentRevoker,
     ): UserLogoutManager =
         UserLogoutManagerImpl(
             authDiskSource = authDiskSource,
@@ -161,6 +163,7 @@ object AuthManagerModule {
             dispatcherManager = dispatcherManager,
             credentialExchangeRegistryManager = credentialExchangeRegistryManager,
             userNotificationPolicyManager = userNotificationPolicyManager,
+            wearConsentRevoker = wearConsentRevoker,
         )
 
     @Provides

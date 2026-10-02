@@ -1,6 +1,8 @@
 package com.x8bit.bitwarden.data.wear
 
 import android.content.SharedPreferences
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -15,6 +17,9 @@ class WearConsentDiskSourceImpl(
     private val encryptedPreferences: SharedPreferences,
     private val json: Json,
 ) : WearConsentDiskSource {
+    private val mutableChanges = MutableSharedFlow<Unit>(replay = 1).apply { tryEmit(Unit) }
+    override val changes = mutableChanges.asSharedFlow()
+
     @Synchronized
     override fun getConsents(): Result<List<WearConsent>> = try {
         val serialized = encryptedPreferences.getString(CONSENTS_KEY, null)
@@ -47,7 +52,12 @@ class WearConsentDiskSourceImpl(
         val committed = encryptedPreferences.edit()
             .putString(CONSENTS_KEY, json.encodeToString(consents))
             .commit()
-        if (committed) Result.success(Unit) else Result.failure(IOException("Consent not saved"))
+        if (committed) {
+            mutableChanges.tryEmit(Unit)
+            Result.success(Unit)
+        } else {
+            Result.failure(IOException("Consent not saved"))
+        }
     } catch (error: SerializationException) {
         Result.failure(error)
     } catch (error: IllegalArgumentException) {

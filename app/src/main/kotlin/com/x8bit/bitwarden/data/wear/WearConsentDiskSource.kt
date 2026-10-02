@@ -1,9 +1,13 @@
 package com.x8bit.bitwarden.data.wear
 
+import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.Serializable
 
 /** Persists account-scoped consent independently of the watch connection. */
 interface WearConsentDiskSource {
+    /** Signals successful persisted changes; subscribers must reload the current ledger. */
+    val changes: Flow<Unit>
+
     /** Returns saved decisions, or a failure if they cannot be read safely. */
     fun getConsents(): Result<List<WearConsent>>
 
