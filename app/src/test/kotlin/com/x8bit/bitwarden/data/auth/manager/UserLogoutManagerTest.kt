@@ -20,7 +20,7 @@ import com.x8bit.bitwarden.data.tools.generator.datasource.disk.GeneratorDiskSou
 import com.x8bit.bitwarden.data.tools.generator.datasource.disk.PasswordHistoryDiskSource
 import com.x8bit.bitwarden.data.vault.datasource.disk.VaultDiskSource
 import com.x8bit.bitwarden.data.vault.datasource.sdk.VaultSdkSource
-import com.x8bit.bitwarden.data.wear.WearConsentRevoker
+import com.x8bit.bitwarden.data.wear.WearSyncLogoutHandler
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -74,8 +74,8 @@ class UserLogoutManagerTest {
         every { shouldClearOnSoftLogout(userId = any()) } returns true
     }
 
-    private val wearConsentRevoker = mockk<WearConsentRevoker> {
-        every { revokeAccount(any()) } returns Result.success(Unit)
+    private val wearSyncLogoutHandler = mockk<WearSyncLogoutHandler> {
+        every { onLogout(any(), any()) } just runs
     }
 
     private val userLogoutManager: UserLogoutManager =
@@ -91,27 +91,18 @@ class UserLogoutManagerTest {
             dispatcherManager = FakeDispatcherManager(),
             credentialExchangeRegistryManager = credentialExchangeRegistryManager,
             userNotificationPolicyManager = userNotificationPolicyManager,
-            wearConsentRevoker = wearConsentRevoker,
+            wearSyncLogoutHandler = wearSyncLogoutHandler,
         )
 
     @Test
-    fun `logout withdraws companion consent before clearing account credentials`() {
+    fun `logout removes watch codes and forgets the watch sync setting`() {
         every { authDiskSource.userState } returns SINGLE_USER_STATE_1
         userLogoutManager.logout(USER_ID_1, LogoutReason.Timeout)
         verifyOrder {
-            wearConsentRevoker.revokeAccount(USER_ID_1)
+            wearSyncLogoutHandler.onLogout(USER_ID_1, isHardLogout = true)
             authDiskSource.userState = null
             authDiskSource.clearData(USER_ID_1)
         }
-    }
-
-    @Test
-    fun `companion persistence failure does not prevent local logout`() {
-        every { authDiskSource.userState } returns SINGLE_USER_STATE_1
-        every { wearConsentRevoker.revokeAccount(any()) } returns
-            Result.failure(java.io.IOException("unavailable"))
-        userLogoutManager.logout(USER_ID_1, LogoutReason.Timeout)
-        assertDataCleared(USER_ID_1)
     }
 
     @Suppress("MaxLineLength")
@@ -220,6 +211,8 @@ class UserLogoutManagerTest {
         userLogoutManager.softLogout(userId = userId, reason = LogoutReason.Timeout)
 
         assertDataCleared(userId = userId)
+        // Soft logout removes watch codes but keeps the sync setting for the next login.
+        verify { wearSyncLogoutHandler.onLogout(userId = userId, isHardLogout = false) }
 
         verify(exactly = 1) {
             settingsDiskSource.storeVaultTimeoutInMinutes(

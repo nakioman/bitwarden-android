@@ -2,23 +2,20 @@ package com.x8bit.bitwarden.wear.data.sync
 
 import kotlinx.coroutines.flow.Flow
 
-/** Enforces one active enrollment and monotonic commands from its authenticated phone. */
+/** Gives the phone this watch's key and decrypts the codes the phone publishes for it. */
 interface WatchSnapshotManager {
-    /** Signals committed snapshot changes or erasure; subscribers must reread protected data. */
+    /** Emits when the published snapshot or this watch's key changes; subscribers must reread. */
     val changes: Flow<Unit>
 
-    /** Returns a recipient key while secure screen locking is configured. */
-    suspend fun provision(): Result<ByteArray>
+    /**
+     * Ensures this watch has a key and that the phone can see it. Without a secure screen lock
+     * the key is deleted and withdrawn, so the phone stops sending codes. Safe to call repeatedly.
+     */
+    suspend fun provision(): Result<Unit>
 
     /**
-     * Accepts a packet from an independently authenticated [sourceNodeId]. Reception is allowed
-     * while locked. Enrollment replacement requires revocation of the current enrollment first.
+     * Decrypts the latest snapshot while the watch is unlocked. Returns null when there is no
+     * snapshot for this watch's current key yet.
      */
-    suspend fun receive(sourceNodeId: String, packet: ByteArray): Result<Unit>
-
-    /** Decrypts the latest offline snapshot only while the watch is unlocked. */
     suspend fun read(): Result<ByteArray?>
-
-    /** Explicitly erases the key, cache and source binding. */
-    suspend fun clear(): Result<Unit>
 }

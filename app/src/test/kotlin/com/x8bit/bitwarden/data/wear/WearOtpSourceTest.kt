@@ -35,18 +35,15 @@ class WearOtpSourceTest {
     private val locks = mockk<VaultLockManager>()
     private val disk = mockk<VaultDiskSource>()
     private val sdk = mockk<VaultSdkSource>()
-    private val consents = mockk<WearConsentDiskSource>()
-    private val consent = WearConsent("user", "watch", "Watch", true, "pinned-key")
     private val icons = mockk<WearOtpIconSource>()
     private val source = WearOtpSourceImpl(
-        disk, sdk, WearOtpAccountSourceImpl(auth, locks), icons, consents, FakeDispatcherManager(),
+        disk, sdk, WearOtpAccountSourceImpl(auth, locks), icons, FakeDispatcherManager(),
     )
 
     @BeforeEach
     fun setUp() {
         every { locks.isVaultUnlocked("user") } returns true
         every { icons.getIconUrl(any()) } returns "https://icons.example/github.com/icon.png"
-        every { consents.getConsents() } returns Result.success(listOf(consent))
         coEvery { disk.getLoginCiphers("user") } returns listOf(encrypted(1))
         coEvery { sdk.decryptCipher("user", any()) } returns Result.success(createMockCipherView(1))
     }
@@ -56,7 +53,7 @@ class WearOtpSourceTest {
         coEvery { sdk.decryptCipher("user", any()) } throws CancellationException()
         var canceled = false
         try {
-            source.getEntries("user", "watch")
+            source.getEntries("user")
         } catch (_: CancellationException) {
             canceled = true
         }
@@ -71,7 +68,7 @@ class WearOtpSourceTest {
             val number = requireNotNull(cipher.id).substringAfterLast('-').toInt()
             Result.success(createMockCipherView(number).copy(favorite = number == 1))
         }
-        val entries = source.getEntries("user", "watch").getOrThrow()
+        val entries = source.getEntries("user").getOrThrow()
         assertEquals((1..9).map { "mockId-$it" }, entries.map { it.id })
         assertEquals((1..9).map { "mockTotp-$it" }, entries.map { it.secret })
         assertEquals("mockName-1", entries.first().name)
@@ -82,36 +79,13 @@ class WearOtpSourceTest {
     @Test
     fun `locked inactive and logged out accounts cannot read vault data`() = runTest {
         every { locks.isVaultUnlocked("user") } returns false
-        assertTrue(source.getEntries("user", "watch").isFailure)
+        assertTrue(source.getEntries("user").isFailure)
         every { locks.isVaultUnlocked("user") } returns true
-        assertTrue(source.getEntries("other", "watch").isFailure)
+        assertTrue(source.getEntries("other").isFailure)
         users.value = UserState("user", listOf(account.copy(isLoggedIn = false)))
-        assertTrue(source.getEntries("user", "watch").isFailure)
+        assertTrue(source.getEntries("user").isFailure)
         users.value = null
-        assertTrue(source.getEntries("user", "watch").isFailure)
-        coVerify(exactly = 0) { disk.getLoginCiphers(any()) }
-    }
-
-    @Test
-    fun `missing revoked unpinned or unreadable consent denies preparation`() = runTest {
-        for (saved in listOf(
-            emptyList(), listOf(consent.copy(isAuthorized = false)),
-            listOf(consent.copy(publicKey = null)), listOf(consent, consent),
-        )) {
-            every { consents.getConsents() } returns Result.success(saved)
-            assertTrue(source.getEntries("user", "watch").isFailure)
-        }
-        every { consents.getConsents() } returns Result.failure(IOException())
-        assertTrue(source.getEntries("user", "watch").isFailure)
-        coVerify(exactly = 0) { disk.getLoginCiphers(any()) }
-    }
-
-    @Test
-    fun `another device or account consent cannot authorize this export`() = runTest {
-        every { consents.getConsents() } returns Result.success(
-            listOf(consent.copy(userId = "other"), consent.copy(deviceId = "other-watch")),
-        )
-        assertTrue(source.getEntries("user", "watch").isFailure)
+        assertTrue(source.getEntries("user").isFailure)
         coVerify(exactly = 0) { disk.getLoginCiphers(any()) }
     }
 
@@ -123,7 +97,7 @@ class WearOtpSourceTest {
             encrypted(3).copy(reprompt = CipherRepromptTypeJson.PASSWORD),
             encrypted(4).copy(login = null),
         )
-        assertEquals(emptyList<WearOtpEntry>(), source.getEntries("user", "watch").getOrThrow())
+        assertEquals(emptyList<WearOtpEntry>(), source.getEntries("user").getOrThrow())
         coVerify(exactly = 0) { sdk.decryptCipher(any(), any()) }
     }
 
@@ -136,18 +110,18 @@ class WearOtpSourceTest {
             createMockCipherView(1, totp = " "),
         )) {
             coEvery { sdk.decryptCipher("user", any()) } returns Result.success(view)
-            assertEquals(emptyList<WearOtpEntry>(), source.getEntries("user", "watch").getOrThrow())
+            assertEquals(emptyList<WearOtpEntry>(), source.getEntries("user").getOrThrow())
         }
     }
 
     @Test
     fun `non premium accounts include only organization TOTP enabled entries`() = runTest {
         users.value = UserState("user", listOf(account.copy(isPremium = false)))
-        assertTrue(source.getEntries("user", "watch").getOrThrow().isEmpty())
+        assertTrue(source.getEntries("user").getOrThrow().isEmpty())
         coEvery { sdk.decryptCipher("user", any()) } returns Result.success(
             createMockCipherView(1).copy(organizationUseTotp = true),
         )
-        assertEquals(1, source.getEntries("user", "watch").getOrThrow().size)
+        assertEquals(1, source.getEntries("user").getOrThrow().size)
     }
 
     @Test
@@ -156,7 +130,7 @@ class WearOtpSourceTest {
             users.value = UserState("other", listOf(account.copy(userId = "other")))
             listOf(encrypted(1))
         }
-        assertTrue(source.getEntries("user", "watch").isFailure)
+        assertTrue(source.getEntries("user").isFailure)
         coVerify(exactly = 0) { sdk.decryptCipher(any(), any()) }
     }
 
@@ -166,30 +140,16 @@ class WearOtpSourceTest {
             every { locks.isVaultUnlocked("user") } returns false
             Result.success(createMockCipherView(1))
         }
-        assertTrue(source.getEntries("user", "watch").isFailure)
+        assertTrue(source.getEntries("user").isFailure)
     }
 
     @Test
-    fun `revocation or recipient key change during decryption cancels preparation`() = runTest {
-        for (changed in listOf(
-            consent.copy(isAuthorized = false), consent.copy(publicKey = "new-key"),
-        )) {
-            every { consents.getConsents() } returns Result.success(listOf(consent))
-            coEvery { sdk.decryptCipher("user", any()) } coAnswers {
-                every { consents.getConsents() } returns Result.success(listOf(changed))
-                Result.success(createMockCipherView(1))
-            }
-            assertTrue(source.getEntries("user", "watch").isFailure)
-        }
-    }
-
-    @Test
-    fun `decrypt failure never returns a partial list`() = runTest {
+    fun `undecryptable items are skipped without dropping the others`() = runTest {
         coEvery { disk.getLoginCiphers("user") } returns listOf(encrypted(1), encrypted(2))
         coEvery { sdk.decryptCipher("user", any()) } returnsMany listOf(
             Result.success(createMockCipherView(1)), Result.failure(IOException("sdk failure")),
         )
-        assertTrue(source.getEntries("user", "watch").isFailure)
+        assertEquals(listOf("mockId-1"), source.getEntries("user").getOrThrow().map { it.id })
     }
 
     @Test
@@ -198,17 +158,17 @@ class WearOtpSourceTest {
             coEvery { sdk.decryptCipher("user", any()) } returns Result.success(
                 createMockCipherView(1).copy(id = id),
             )
-            assertTrue(source.getEntries("user", "watch").isFailure)
+            assertTrue(source.getEntries("user").isFailure)
         }
         coEvery { disk.getLoginCiphers("user") } returns listOf(encrypted(1), encrypted(1))
         coEvery { sdk.decryptCipher("user", any()) } returns Result.success(createMockCipherView(1))
-        assertTrue(source.getEntries("user", "watch").isFailure)
+        assertTrue(source.getEntries("user").isFailure)
     }
 
     @Test
     fun `disk errors return a sanitized failure`() = runTest {
         coEvery { disk.getLoginCiphers("user") } throws IOException("sensitive detail")
-        val result = source.getEntries("user", "watch")
+        val result = source.getEntries("user")
         assertEquals("Wear OTP preparation unavailable", result.exceptionOrNull()?.message)
     }
 

@@ -4,21 +4,14 @@
 
     <application tools:ignore="MissingApplicationIcon">
         <service
-            android:name="com.x8bit.bitwarden.data.wear.WearDeliveryListenerService"
+            android:name="com.x8bit.bitwarden.data.wear.WearKeyListenerService"
             android:exported="true">
             <intent-filter>
                 <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
                 <data
                     android:scheme="wear"
                     android:host="*"
-                    android:pathPrefix="/bitwarden/wear/data/v1/receipts/" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="com.google.android.gms.wearable.CAPABILITY_CHANGED" />
-                <data
-                    android:scheme="wear"
-                    android:host="*"
-                    android:path="/bitwarden_wear_companion_v1" />
+                    android:path="/bitwarden/wear/v2/key" />
             </intent-filter>
         </service>
         <service

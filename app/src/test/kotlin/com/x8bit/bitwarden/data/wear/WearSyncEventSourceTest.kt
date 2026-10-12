@@ -1,18 +1,17 @@
 package com.x8bit.bitwarden.data.wear
 
 import app.cash.turbine.test
+import com.bitwarden.network.model.SyncResponseJson
 import com.x8bit.bitwarden.data.auth.repository.AuthRepository
 import com.x8bit.bitwarden.data.auth.repository.model.UserState
 import com.x8bit.bitwarden.data.vault.datasource.disk.VaultDiskSource
 import com.x8bit.bitwarden.data.vault.manager.VaultLockManager
 import com.x8bit.bitwarden.data.vault.manager.model.VaultStateEvent
-import com.bitwarden.network.model.SyncResponseJson
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
-import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 class WearSyncEventSourceTest {
@@ -29,29 +28,18 @@ class WearSyncEventSourceTest {
     private val lockManager = mockk<VaultLockManager> {
         every { vaultStateEventFlow } returns locks
     }
-    private val changes = MutableSharedFlow<Unit>()
-    private val consent = mockk<WearConsentDiskSource> {
-        every { changes } returns this@WearSyncEventSourceTest.changes
+    private val settingChanges = MutableSharedFlow<Unit>()
+    private val settings = mockk<WearSyncDiskSource> {
+        every { changes } returns settingChanges
     }
-    private val source = WearSyncEventSourceImpl(auth, disk, lockManager, consent, true)
+    private val source = WearSyncEventSourceImpl(auth, disk, lockManager, settings, true)
 
     @Test
-    fun `initial account and local cipher changes request refresh`() = runTest {
+    fun `initial account and local cipher changes request an update`() = runTest {
         source.events.test {
-            assertEquals(WearSyncEvent.Refresh("user"), awaitItem())
+            awaitItem()
             ciphers.value = listOf(mockk())
-            assertEquals(WearSyncEvent.Refresh("user"), awaitItem())
-            cancelAndIgnoreRemainingEvents()
-        }
-    }
-
-    @Test
-    fun `null account requests retry without inferring logout`() = runTest {
-        users.value = null
-        source.events.test {
-            assertEquals(WearSyncEvent.Retry, awaitItem())
-            changes.emit(Unit)
-            assertEquals(WearSyncEvent.Retry, awaitItem())
+            awaitItem()
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -59,52 +47,52 @@ class WearSyncEventSourceTest {
     @Test
     fun `switching accounts unsubscribes old vault notifications`() = runTest {
         source.events.test {
-            assertEquals(WearSyncEvent.Refresh("user"), awaitItem())
+            awaitItem()
             users.value = UserState("other", listOf(account.copy(userId = "other")))
-            assertEquals(WearSyncEvent.Refresh("other"), awaitItem())
+            awaitItem()
             ciphers.value = listOf(mockk())
             expectNoEvents()
             otherCiphers.value = listOf(mockk())
-            assertEquals(WearSyncEvent.Refresh("other"), awaitItem())
+            awaitItem()
             cancelAndIgnoreRemainingEvents()
         }
     }
 
     @Test
-    fun `unlock requests refresh while locking only retries ciphertext`() = runTest {
+    fun `unlock requests an update while lock does not`() = runTest {
         source.events.test {
             awaitItem()
-            locks.emit(VaultStateEvent.Unlocked("user"))
-            assertEquals(WearSyncEvent.Refresh("user"), awaitItem())
             locks.emit(VaultStateEvent.Locked("user"))
-            assertEquals(WearSyncEvent.Retry, awaitItem())
+            expectNoEvents()
+            locks.emit(VaultStateEvent.Unlocked("user"))
+            awaitItem()
             cancelAndIgnoreRemainingEvents()
         }
     }
 
     @Test
-    fun `committed consent changes request the current account`() = runTest {
+    fun `setting changes request an update`() = runTest {
         source.events.test {
             awaitItem()
-            changes.emit(Unit)
-            assertEquals(WearSyncEvent.Refresh("user"), awaitItem())
+            settingChanges.emit(Unit)
+            awaitItem()
             cancelAndIgnoreRemainingEvents()
         }
     }
 
     @Test
-    fun `account entitlement changes refresh without switching user`() = runTest {
+    fun `premium changes request an update`() = runTest {
         source.events.test {
             awaitItem()
             users.value = UserState("user", listOf(account.copy(isPremium = !account.isPremium)))
-            assertEquals(WearSyncEvent.Refresh("user"), awaitItem())
+            awaitItem()
             cancelAndIgnoreRemainingEvents()
         }
     }
 
     @Test
-    fun `disabled variants do not observe lifecycle events`() = runTest {
-        WearSyncEventSourceImpl(auth, disk, lockManager, consent, false).events.test {
+    fun `disabled variants do not observe anything`() = runTest {
+        WearSyncEventSourceImpl(auth, disk, lockManager, settings, false).events.test {
             awaitComplete()
         }
     }

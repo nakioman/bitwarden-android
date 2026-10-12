@@ -7,7 +7,6 @@ import com.x8bit.bitwarden.data.platform.repository.SettingsRepository
 import com.x8bit.bitwarden.data.vault.datasource.disk.VaultDiskSource
 import com.x8bit.bitwarden.data.vault.datasource.sdk.VaultSdkSource
 import com.x8bit.bitwarden.data.vault.manager.VaultLockManager
-import com.x8bit.bitwarden.data.wear.WearConsentDiskSource
 import com.x8bit.bitwarden.data.wear.WearOtpAccountSource
 import com.x8bit.bitwarden.data.wear.WearOtpAccountSourceImpl
 import com.x8bit.bitwarden.data.wear.WearOtpIconSource
@@ -20,7 +19,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
-/** Provides authorized OTP preparation without starting synchronization. */
+/** Provides OTP preparation without starting synchronization. */
 @Module
 @InstallIn(SingletonComponent::class)
 object WearOtpModule {
@@ -48,9 +47,8 @@ object WearOtpModule {
         sdkSource: VaultSdkSource,
         accountSource: WearOtpAccountSource,
         iconSource: WearOtpIconSource,
-        consentSource: WearConsentDiskSource,
         dispatcherManager: DispatcherManager,
     ): WearOtpSource = WearOtpSourceImpl(
-        diskSource, sdkSource, accountSource, iconSource, consentSource, dispatcherManager,
+        diskSource, sdkSource, accountSource, iconSource, dispatcherManager,
     )
 }

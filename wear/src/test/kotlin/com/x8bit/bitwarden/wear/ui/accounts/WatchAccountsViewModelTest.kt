@@ -35,6 +35,7 @@ class WatchAccountsViewModelTest : BaseViewModelTest() {
     private val snapshotChanges = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     private val snapshots = mockk<WatchSnapshotManager> {
         every { this@mockk.changes } returns snapshotChanges
+        coEvery { provision() } returns Result.success(Unit)
     }
     private val github = account("github", "GitHub")
     private val google = account("google", "Google")

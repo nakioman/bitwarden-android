@@ -1,11 +1,7 @@
 package com.x8bit.bitwarden.data.wear
 
 import android.net.Uri
-import com.bitwarden.core.data.manager.UuidManager
 import com.bitwarden.core.data.wear.WearDataProtocol
-import com.bitwarden.core.data.wear.WearSnapshotFrame
-import com.bitwarden.core.data.wear.WearSnapshotHeader
-import com.bitwarden.core.data.wear.WearSnapshotProtocol
 import com.bitwarden.ui.platform.base.BaseRobolectricTest
 import com.google.android.gms.tasks.OnFailureListener
 import com.google.android.gms.tasks.OnSuccessListener
@@ -13,6 +9,10 @@ import com.google.android.gms.tasks.Task
 import com.google.android.gms.wearable.Asset
 import com.google.android.gms.wearable.DataClient
 import com.google.android.gms.wearable.DataItem
+import com.google.android.gms.wearable.DataItemBuffer
+import com.google.android.gms.wearable.Node
+import com.google.android.gms.wearable.NodeClient
+import com.google.android.gms.wearable.PutDataMapRequest
 import com.google.android.gms.wearable.PutDataRequest
 import io.mockk.every
 import io.mockk.mockk
@@ -21,92 +21,90 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import java.security.KeyPairGenerator
 
 class WearDataSourceTest : BaseRobolectricTest() {
     private val client = mockk<DataClient>()
-    private val uuidManager = mockk<UuidManager>()
-    private val source = WearDataSourceImpl(client, uuidManager)
-    private val item = mockk<DataItem>()
-    private val packet = WearSnapshotProtocol.encode(WearSnapshotFrame(
-        WearSnapshotHeader("22222222-2222-4222-8222-222222222222", 1, "a".repeat(64)),
-        byteArrayOf(1, 2, 3),
-    )).getOrThrow()
+    private val nodeClient = mockk<NodeClient>()
+    private val source = WearDataSourceImpl(client, nodeClient)
+    private val publicKey = KeyPairGenerator.getInstance("RSA").apply { initialize(2048) }
+        .generateKeyPair().public.encoded
+    private val info = WearSnapshotInfo("watch", "owner", "a".repeat(64), "tag")
 
     @Before
     fun setUp() {
-        every { uuidManager.generateUuid() } returnsMany listOf("attempt-one", "attempt-two")
-        every { item.uri } returns Uri.Builder().scheme("wear").authority("watch")
-            .path(WearDataProtocol.receiptPath("watch")).build()
+        val node = mockk<Node> { every { id } returns "phone" }
+        every { nodeClient.localNode } returns completedTask(Result.success(node))
     }
 
     @Test
-    fun `receipt from another owner is rejected even if bytes match`() = runTest {
-        every { item.data } returns WearDataProtocol.createReceipt(packet).getOrThrow()
-        every { item.uri } returns Uri.Builder().scheme("wear").authority("other-watch")
-            .path(WearDataProtocol.receiptPath("watch")).build()
-        every { client.getDataItem(any<Uri>()) } returns completedTask(Result.success(item))
-        assertTrue(source.getReceipt("watch").isFailure)
-    }
-
-    @Test
-    fun `publish uses an urgent targeted asset and fresh attempt for redelivery`() = runTest {
-        val requests = mutableListOf<PutDataRequest>()
-        every { client.putDataItem(capture(requests)) } returns completedTask(Result.success(item))
-        assertTrue(source.publish("watch", packet).isSuccess)
-        assertTrue(source.publish("watch", packet).isSuccess)
-        requests.forEach { request ->
-            assertEquals(
-                WearDataProtocol.packetPath("watch"), request.uri.path,
-            )
-            assertTrue(request.isUrgent)
-            assertEquals(
-                Asset.createFromBytes(packet),
-                request.assets.values.single(),
-            )
-        }
-        assertFalse(requireNotNull(requests.first().data).contentEquals(requests.last().data))
-        verify(exactly = 2) { uuidManager.generateUuid() }
-        verify(exactly = 0) { client.getDataItem(any<Uri>()) }
-    }
-
-    @Test
-    fun `malformed packet is rejected before reaching Google Play services`() = runTest {
-        assertTrue(source.publish("watch", byteArrayOf()).isFailure)
-        verify(exactly = 0) { client.putDataItem(any()) }
-    }
-
-    @Test
-    fun `receipt lookup uses explicit watch ownership and returns a detached copy`() = runTest {
-        val receipt = WearDataProtocol.createReceipt(packet).getOrThrow()
-        every { item.data } returns receipt
+    fun `watch keys come from every other node and ignore invalid keys`() = runTest {
         val uris = mutableListOf<Uri>()
-        every { client.getDataItem(capture(uris)) } returns completedTask(Result.success(item))
-        val result = source.getReceipt("watch").getOrThrow()
-        assertArrayEquals(receipt, result)
-        assertFalse(receipt === result)
-        assertEquals("wear", uris.single().scheme)
-        assertEquals("watch", uris.single().host)
-        assertEquals(
-            WearDataProtocol.receiptPath("watch"), uris.single().path,
+        val buffer = buffer(
+            keyItem("watch", publicKey),
+            keyItem("phone", publicKey),
+            keyItem("broken", byteArrayOf(1, 2, 3)),
         )
+        every { client.getDataItems(capture(uris)) } returns completedTask(Result.success(buffer))
+
+        val keys = source.getWatchKeys().getOrThrow()
+
+        assertEquals(listOf("watch"), keys.map { it.nodeId })
+        assertArrayEquals(publicKey, keys.single().publicKey)
+        assertEquals(null, uris.single().host)
+        assertEquals(WearDataProtocol.PUBLIC_KEY_PATH, uris.single().path)
+        verify { buffer.release() }
     }
 
     @Test
-    fun `missing receipt does not acknowledge a packet`() = runTest {
-        every { client.getDataItem(any<Uri>()) } returns completedTask(Result.success(null))
-        assertNull(source.getReceipt("watch").getOrThrow())
+    fun `snapshots are listed from this phone only`() = runTest {
+        val request = PutDataMapRequest.create(WearDataProtocol.snapshotPath("watch")).apply {
+            dataMap.putString(WearDataProtocol.TARGET_NODE, "watch")
+            dataMap.putString(WearDataProtocol.OWNER, "owner")
+            dataMap.putString(WearDataProtocol.RECIPIENT_KEY_ID, "a".repeat(64))
+            dataMap.putString(WearDataProtocol.CONTENT_TAG, "tag")
+        }.asPutDataRequest()
+        val item = mockk<DataItem>()
+        every { item.uri } returns Uri.parse("wear://phone${request.uri.path}")
+        every { item.data } returns request.data
+        every { item.assets } returns emptyMap()
+        every { item.freeze() } returns item
+        val uris = mutableListOf<Uri>()
+        every {
+            client.getDataItems(capture(uris), DataClient.FILTER_PREFIX)
+        } returns completedTask(Result.success(buffer(item)))
+
+        assertEquals(listOf(info), source.getSnapshots().getOrThrow())
+        assertEquals("phone", uris.single().host)
+        assertEquals(WearDataProtocol.SNAPSHOT_PATH_PREFIX, uris.single().path)
     }
 
     @Test
-    fun `oversized receipt is rejected`() = runTest {
-        every { item.data } returns ByteArray(WearDataProtocol.MAX_RECEIPT_BYTES + 1)
-        every { client.getDataItem(any<Uri>()) } returns completedTask(Result.success(item))
-        assertTrue(source.getReceipt("watch").isFailure)
+    fun `put publishes an urgent snapshot addressed to the watch`() = runTest {
+        val requests = mutableListOf<PutDataRequest>()
+        every { client.putDataItem(capture(requests)) } returns
+            completedTask(Result.success(mockk()))
+
+        assertTrue(source.putSnapshot(info, byteArrayOf(1, 2, 3)).isSuccess)
+
+        val request = requests.single()
+        assertEquals(WearDataProtocol.snapshotPath("watch"), request.uri.path)
+        assertTrue(request.isUrgent)
+        assertEquals(Asset.createFromBytes(byteArrayOf(1, 2, 3)), request.assets.values.single())
+    }
+
+    @Test
+    fun `delete removes only this phone's snapshot for the watch`() = runTest {
+        val uris = mutableListOf<Uri>()
+        every { client.deleteDataItems(capture(uris)) } returns completedTask(Result.success(1))
+
+        assertTrue(source.deleteSnapshot("watch").isSuccess)
+
+        assertEquals("phone", uris.single().host)
+        assertEquals(WearDataProtocol.snapshotPath("watch"), uris.single().path)
     }
 
     @Test
@@ -114,7 +112,7 @@ class WearDataSourceTest : BaseRobolectricTest() {
         every { client.putDataItem(any()) } returns completedTask(
             Result.failure(SecurityException("private details")),
         )
-        val result = source.publish("watch", packet)
+        val result = source.putSnapshot(info, byteArrayOf(1))
         assertTrue(result.isFailure)
         assertEquals("Wear data unavailable", result.exceptionOrNull()?.message)
     }
@@ -124,12 +122,21 @@ class WearDataSourceTest : BaseRobolectricTest() {
         every { client.putDataItem(any()) } throws CancellationException()
         var canceled = false
         try {
-            source.publish("watch", packet)
+            source.putSnapshot(info, byteArrayOf(1))
         } catch (_: CancellationException) {
             canceled = true
         }
         assertTrue(canceled)
     }
+}
+
+private fun keyItem(node: String, key: ByteArray): DataItem = mockk {
+    every { uri } returns Uri.parse("wear://$node${WearDataProtocol.PUBLIC_KEY_PATH}")
+    every { data } returns key
+}
+
+private fun buffer(vararg items: DataItem): DataItemBuffer = mockk(relaxUnitFun = true) {
+    every { iterator() } answers { items.toMutableList().iterator() }
 }
 
 private fun <T> completedTask(result: Result<T>): Task<T> {

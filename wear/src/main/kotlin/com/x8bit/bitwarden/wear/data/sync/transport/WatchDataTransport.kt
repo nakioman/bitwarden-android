@@ -1,18 +1,21 @@
 package com.x8bit.bitwarden.wear.data.sync.transport
 
-import com.google.android.gms.wearable.DataItem
+import kotlinx.coroutines.flow.Flow
 
-/** Bounded companion transport for encrypted snapshots and durable receipts. */
+/** Data Layer access for this watch's key and the snapshot the phone publishes for it. */
 interface WatchDataTransport {
-    /** Returns this watch's authenticated Data Layer node identifier. */
-    suspend fun getLocalNodeId(): Result<String>
+    /** Emits whenever a snapshot addressed to any watch is published or deleted. */
+    val snapshotChanges: Flow<Unit>
 
-    /** Reads a bounded packet asset while releasing its descriptor on every exit path. */
-    suspend fun readPacket(item: DataItem): Result<ByteArray>
+    /** Publishes this watch's public key; publishing the same key again changes nothing. */
+    suspend fun publishPublicKey(publicKey: ByteArray): Result<Unit>
 
-    /** Publishes a watch-owned receipt after the caller has durably committed the command. */
-    suspend fun publishReceipt(
-        localNodeId: String,
-        receipt: ByteArray,
-    ): Result<Unit>
+    /** Removes this watch's published public key so the phone stops sending codes. */
+    suspend fun deletePublicKey(): Result<Unit>
+
+    /** Reads the latest snapshot addressed to this watch, or null if there is none. */
+    suspend fun readSnapshot(): Result<WatchSnapshot?>
 }
+
+/** An encrypted snapshot and the identifier of the key it was encrypted for. */
+class WatchSnapshot(val recipientKeyId: String, val envelope: ByteArray)

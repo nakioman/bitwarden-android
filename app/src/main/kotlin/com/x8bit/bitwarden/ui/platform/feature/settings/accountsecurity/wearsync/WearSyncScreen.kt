@@ -1,5 +1,6 @@
 package com.x8bit.bitwarden.ui.platform.feature.settings.accountsecurity.wearsync
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,17 +27,18 @@ import com.bitwarden.ui.platform.base.util.EventsEffect
 import com.bitwarden.ui.platform.base.util.standardHorizontalMargin
 import com.bitwarden.ui.platform.components.appbar.BitwardenTopAppBar
 import com.bitwarden.ui.platform.components.button.BitwardenOutlinedButton
-import com.bitwarden.ui.platform.components.dialog.BitwardenTwoButtonDialog
+import com.bitwarden.ui.platform.components.header.BitwardenListHeaderText
 import com.bitwarden.ui.platform.components.model.CardStyle
 import com.bitwarden.ui.platform.components.row.BitwardenTextRow
 import com.bitwarden.ui.platform.components.scaffold.BitwardenScaffold
+import com.bitwarden.ui.platform.components.toggle.BitwardenSwitch
 import com.bitwarden.ui.platform.components.util.rememberVectorPainter
 import com.bitwarden.ui.platform.feature.settings.appearance.model.AppTheme
 import com.bitwarden.ui.platform.resource.BitwardenDrawable
 import com.bitwarden.ui.platform.resource.BitwardenString
 import com.bitwarden.ui.platform.theme.BitwardenTheme
 
-/** Displays reachable watches and explicit, account-scoped consent. */
+/** Lets the active account turn watch sync on or off and shows watches running Bitwarden. */
 @Composable
 fun WearSyncScreen(
     onNavigateBack: () -> Unit,
@@ -44,7 +46,7 @@ fun WearSyncScreen(
 ) {
     val state by viewModel.stateFlow.collectAsStateWithLifecycle()
     LifecycleResumeEffect(Unit) {
-        viewModel.trySendAction(WearSyncAction.Refresh)
+        viewModel.trySendAction(WearSyncAction.RefreshClick)
         onPauseOrDispose { }
     }
     EventsEffect(viewModel = viewModel) {
@@ -58,7 +60,6 @@ fun WearSyncScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun WearSyncContent(state: WearSyncState, onAction: (WearSyncAction) -> Unit) {
-    WearSyncDialog(state = state, onAction = onAction)
     BitwardenScaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
@@ -67,7 +68,7 @@ private fun WearSyncContent(state: WearSyncState, onAction: (WearSyncAction) -> 
                 scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState()),
                 navigationIcon = rememberVectorPainter(BitwardenDrawable.ic_back),
                 navigationIconContentDescription = stringResource(BitwardenString.back),
-                onNavigationIconClick = { onAction(WearSyncAction.Back) },
+                onNavigationIconClick = { onAction(WearSyncAction.BackClick) },
             )
         },
     ) {
@@ -80,98 +81,64 @@ private fun WearSyncContent(state: WearSyncState, onAction: (WearSyncAction) -> 
                 .padding(vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text(
-                text = stringResource(
-                    BitwardenString.choose_a_watch_for_offline_verification_codes,
+            BitwardenSwitch(
+                label = stringResource(BitwardenString.sync_verification_codes_to_watch),
+                supportingText = stringResource(
+                    BitwardenString.your_verification_codes_are_encrypted_and_stored_on_your_watch,
                 ),
-                color = BitwardenTheme.colorScheme.text.primary,
-                style = BitwardenTheme.typography.bodyMedium,
-            )
-            WearSyncDeviceList(state = state, onAction = onAction)
-            BitwardenOutlinedButton(
-                label = stringResource(BitwardenString.refresh_watches),
-                onClick = { onAction(WearSyncAction.Refresh) },
-                isEnabled = !state.isLoading,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
-    }
-}
-
-@Composable
-private fun WearSyncDeviceList(state: WearSyncState, onAction: (WearSyncAction) -> Unit) {
-    val message = when {
-        state.isLoading -> BitwardenString.loading
-        state.error == WearSyncError.VAULT_LOCKED -> {
-            BitwardenString.unlock_your_vault_to_authorize_a_watch
-        }
-        state.error == WearSyncError.UNAVAILABLE -> BitwardenString.wear_os_sync_is_unavailable
-        state.error == WearSyncError.FAILURE -> BitwardenString.unable_to_load_watch_settings
-        state.devices.isEmpty() -> BitwardenString.no_bitwarden_watches_connected
-        else -> null
-    }
-    if (message != null) {
-        Text(
-            text = stringResource(message),
-            color = BitwardenTheme.colorScheme.text.primary,
-            style = BitwardenTheme.typography.bodyMedium,
-        )
-    } else {
-        state.devices.forEach { device ->
-            val status = stringResource(
-                if (device.isAuthorized) {
-                    BitwardenString.watch_authorized
-                } else {
-                    BitwardenString.watch_not_authorized
-                },
-            )
-            val connection = stringResource(
-                if (device.isReachable) {
-                    BitwardenString.watch_connected
-                } else {
-                    BitwardenString.watch_disconnected
-                },
-            )
-            BitwardenTextRow(
-                text = device.name,
-                description = AnnotatedString(
-                    stringResource(BitwardenString.watch_status_format, status, connection),
-                ),
-                onClick = { onAction(WearSyncAction.DeviceClick(device.id)) },
-                isEnabled = device.isReachable || device.isAuthorized,
+                isChecked = state.isSyncEnabled,
+                onCheckedChange = { onAction(WearSyncAction.SyncToggle(it)) },
+                enabled = state.error != WearSyncError.UNAVAILABLE,
                 cardStyle = CardStyle.Full,
                 modifier = Modifier.fillMaxWidth(),
             )
+            if (state.error == WearSyncError.UPDATE_FAILED) {
+                WearSyncMessage(BitwardenString.unable_to_update_your_watches_please_try_again)
+            }
+            BitwardenListHeaderText(label = stringResource(BitwardenString.watches))
+            WearSyncWatchList(state = state)
+            BitwardenOutlinedButton(
+                label = stringResource(BitwardenString.refresh_watches),
+                onClick = { onAction(WearSyncAction.RefreshClick) },
+                isEnabled = !state.isLoadingWatches,
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
     }
 }
 
 @Composable
-private fun WearSyncDialog(state: WearSyncState, onAction: (WearSyncAction) -> Unit) {
-    state.pendingDevice?.let { device ->
-        val actionLabel = stringResource(
-            if (device.isAuthorized) {
-                BitwardenString.revoke_watch_access
-            } else {
-                BitwardenString.authorize_watch
-            },
-        )
-        BitwardenTwoButtonDialog(
-            title = device.name,
-            message = stringResource(
-                if (device.isAuthorized) {
-                    BitwardenString.watch_codes_will_be_removed_when_the_watch_reconnects
-                } else {
-                    BitwardenString.allow_this_watch_to_store_verification_codes_for_offline_use
-                },
-            ),
-            confirmButtonText = actionLabel,
-            dismissButtonText = stringResource(BitwardenString.cancel),
-            onConfirmClick = { onAction(WearSyncAction.Confirm) },
-            onDismissClick = { onAction(WearSyncAction.Dismiss) },
-            onDismissRequest = { onAction(WearSyncAction.Dismiss) },
+private fun WearSyncWatchList(state: WearSyncState) {
+    val message = when {
+        state.isLoadingWatches -> BitwardenString.loading
+        state.error == WearSyncError.UNAVAILABLE -> BitwardenString.wear_os_sync_is_unavailable
+        state.error == WearSyncError.LOAD_FAILED -> BitwardenString.unable_to_load_watch_settings
+        state.watches.isEmpty() -> BitwardenString.no_bitwarden_watches_connected
+        else -> null
+    }
+    if (message != null) {
+        WearSyncMessage(message)
+        return
+    }
+    state.watches.forEach { watch ->
+        BitwardenTextRow(
+            text = watch.name,
+            description = AnnotatedString(stringResource(BitwardenString.watch_connected)),
+            onClick = {},
+            clickable = false,
+            cardStyle = CardStyle.Full,
+            modifier = Modifier.fillMaxWidth(),
         )
     }
+}
+
+@Composable
+private fun WearSyncMessage(@StringRes message: Int) {
+    Text(
+        text = stringResource(message),
+        color = BitwardenTheme.colorScheme.text.primary,
+        style = BitwardenTheme.typography.bodyMedium,
+    )
 }
 
 @Preview
@@ -180,7 +147,8 @@ private fun WearSyncConnectedPreview() {
     BitwardenTheme(theme = AppTheme.DARK) {
         WearSyncContent(
             state = WearSyncState(
-                devices = listOf(WearSyncDeviceState("preview", "Wear OS watch", false, true)),
+                isSyncEnabled = true,
+                watches = listOf(WearSyncWatchState("preview", "Wear OS watch")),
             ),
             onAction = {},
         )
@@ -191,6 +159,6 @@ private fun WearSyncConnectedPreview() {
 @Composable
 private fun WearSyncEmptyPreview() {
     BitwardenTheme(theme = AppTheme.LIGHT) {
-        WearSyncContent(state = WearSyncState(), onAction = {})
+        WearSyncContent(state = WearSyncState(isSyncEnabled = false), onAction = {})
     }
 }

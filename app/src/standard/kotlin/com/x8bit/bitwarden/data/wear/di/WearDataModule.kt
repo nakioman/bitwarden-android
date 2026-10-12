@@ -1,7 +1,6 @@
 package com.x8bit.bitwarden.data.wear.di
 
 import android.content.Context
-import com.bitwarden.core.data.manager.UuidManager
 import com.google.android.gms.wearable.Wearable
 import com.x8bit.bitwarden.data.wear.WearDataSource
 import com.x8bit.bitwarden.data.wear.WearDataSourceImpl
@@ -16,11 +15,9 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object WearDataModule {
-    /** Publishes ciphertext assets and retrieves watch-owned receipts. */
+    /** Reads watch keys and publishes encrypted snapshots. */
     @Provides
     @Singleton
-    fun provideWearDataSource(
-        @ApplicationContext context: Context,
-        uuidManager: UuidManager,
-    ): WearDataSource = WearDataSourceImpl(Wearable.getDataClient(context), uuidManager)
+    fun provideWearDataSource(@ApplicationContext context: Context): WearDataSource =
+        WearDataSourceImpl(Wearable.getDataClient(context), Wearable.getNodeClient(context))
 }

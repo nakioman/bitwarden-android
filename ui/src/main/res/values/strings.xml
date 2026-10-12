@@ -1455,19 +1455,13 @@ Do you want to switch to this account?</string>
     <string name="set_up_a_screen_lock_on_your_watch_to_use_bitwarden">Set up a screen lock on your watch to use Bitwarden.</string>
     <string name="unlock_your_watch_to_use_bitwarden">Unlock your watch to use Bitwarden.</string>
     <string name="wear_os_sync">Wear OS sync</string>
-    <string name="choose_a_watch_for_offline_verification_codes">Choose a watch to access your verification codes offline. A screen lock is required on the watch.</string>
-    <string name="authorize_watch">Authorize watch</string>
-    <string name="revoke_watch_access">Revoke watch access</string>
-    <string name="allow_this_watch_to_store_verification_codes_for_offline_use">Allow this watch to store verification codes from this account for offline use? Codes remain available while disconnected. If you revoke access or log out, they are removed when the watch reconnects.</string>
-    <string name="watch_codes_will_be_removed_when_the_watch_reconnects">Verification codes on this watch will be removed when it reconnects. They remain available while the watch is offline.</string>
+    <string name="sync_verification_codes_to_watch">Sync verification codes to watch</string>
+    <string name="your_verification_codes_are_encrypted_and_stored_on_your_watch">Your verification codes are encrypted and stored on your watch so you can use them offline. A screen lock is required on the watch. Codes are removed from the watch when you log out or turn this off.</string>
+    <string name="watches">Watches</string>
     <string name="refresh_watches">Refresh watches</string>
-    <string name="unlock_your_vault_to_authorize_a_watch">Unlock your vault to manage watch access.</string>
     <string name="wear_os_sync_is_unavailable">Wear OS sync is unavailable.</string>
     <string name="unable_to_load_watch_settings">Unable to load watch settings. Please try again.</string>
+    <string name="unable_to_update_your_watches_please_try_again">Unable to update your watches. Please try again.</string>
     <string name="no_bitwarden_watches_connected">No Bitwarden watches connected. Pair your watch with this phone and open Bitwarden on the watch.</string>
-    <string name="watch_authorized">Authorized</string>
-    <string name="watch_not_authorized">Not authorized</string>
     <string name="watch_connected">Connected</string>
-    <string name="watch_disconnected">Disconnected</string>
-    <string name="watch_status_format">%1$s · %2$s</string>
 </resources>

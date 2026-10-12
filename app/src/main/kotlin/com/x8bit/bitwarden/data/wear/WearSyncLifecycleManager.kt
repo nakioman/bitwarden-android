@@ -1,7 +1,7 @@
 package com.x8bit.bitwarden.data.wear
 
-/** Owns phone lifecycle observation independently of settings screens and bound services. */
+/** Keeps watches updated for the lifetime of the process, independently of any screen. */
 interface WearSyncLifecycleManager {
-    /** Starts observation once for this process and retries previously committed commands. */
+    /** Starts observing changes once for this process. */
     fun initialize()
 }

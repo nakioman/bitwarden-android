@@ -2,9 +2,6 @@ package com.x8bit.bitwarden.wear.data.sync.di
 
 import android.content.Context
 import com.google.android.gms.wearable.Wearable
-import com.x8bit.bitwarden.wear.data.sync.WatchDataReceiver
-import com.x8bit.bitwarden.wear.data.sync.transport.WatchDataListenerManager
-import com.x8bit.bitwarden.wear.data.sync.transport.WatchDataListenerManagerImpl
 import com.x8bit.bitwarden.wear.data.sync.transport.WatchDataTransport
 import com.x8bit.bitwarden.wear.data.sync.transport.WatchDataTransportImpl
 import dagger.Module
@@ -14,21 +11,13 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
-/** Binds Google Play transport in all companion build types. */
+/** Binds the Google Play Data Layer transport. */
 @Module
 @InstallIn(SingletonComponent::class)
 object WatchDataModule {
-    /** Provides shared bounded asset access and watch-owned receipts. */
+    /** Provides key publication and snapshot reads. */
     @Provides
     @Singleton
     fun provideWatchDataTransport(@ApplicationContext context: Context): WatchDataTransport =
         WatchDataTransportImpl(Wearable.getDataClient(context), Wearable.getNodeClient(context))
-
-    /** Uses protected snapshot persistence. */
-    @Provides
-    @Singleton
-    fun provideWatchDataListenerManager(
-        transport: WatchDataTransport,
-        receiver: WatchDataReceiver,
-    ): WatchDataListenerManager = WatchDataListenerManagerImpl(transport, receiver)
 }

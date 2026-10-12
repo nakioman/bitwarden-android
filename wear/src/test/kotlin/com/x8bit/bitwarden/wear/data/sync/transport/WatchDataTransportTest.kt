@@ -1,5 +1,6 @@
 package com.x8bit.bitwarden.wear.data.sync.transport
 
+import com.bitwarden.core.data.wear.WearDataProtocol
 import com.google.android.gms.tasks.OnFailureListener
 import com.google.android.gms.tasks.OnSuccessListener
 import com.google.android.gms.tasks.Task
@@ -8,9 +9,9 @@ import com.google.android.gms.wearable.Node
 import com.google.android.gms.wearable.NodeClient
 import io.mockk.every
 import io.mockk.mockk
-import io.mockk.verify
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.runTest
+import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -22,16 +23,9 @@ class WatchDataTransportTest {
     private val transport = WatchDataTransportImpl(client, nodes)
 
     @Test
-    fun `local identity comes from the Google Play node client`() = runTest {
-        val node = mockk<Node> { every { id } returns "watch" }
-        every { nodes.localNode } returns task(Result.success(node))
-        assertEquals("watch", transport.getLocalNodeId().getOrThrow())
-    }
-
-    @Test
     fun `transport error is sanitized`() = runTest {
         every { nodes.localNode } returns task(Result.failure(SecurityException("private details")))
-        val result = transport.getLocalNodeId()
+        val result = transport.deletePublicKey()
         assertTrue(result.isFailure)
         assertEquals("Wear data unavailable", result.exceptionOrNull()?.message)
     }
@@ -43,22 +37,24 @@ class WatchDataTransportTest {
         every { task.addOnFailureListener(any()) } returns task
         every { task.addOnCanceledListener(any()) } returns task
         every { nodes.localNode } returns task
-        assertTrue(transport.getLocalNodeId().isFailure)
+        assertTrue(transport.readSnapshot().isFailure)
     }
 
     @Test
     fun `caller cancellation propagates`() {
         every { nodes.localNode } throws CancellationException()
         assertThrows(CancellationException::class.java) {
-            runTest { transport.getLocalNodeId() }
+            runTest { transport.readSnapshot() }
         }
     }
 
     @Test
-    fun `malformed receipt is rejected before publication`() = runTest {
-        assertTrue(transport.publishReceipt("watch", byteArrayOf())
-            .isFailure)
-        verify(exactly = 0) { client.putDataItem(any()) }
+    fun `bounded snapshot reader keeps complete snapshots and rejects oversized ones`() {
+        val bytes = ByteArray(10_000) { it.toByte() }
+        assertArrayEquals(bytes, readBoundedSnapshot(bytes.inputStream()))
+        assertThrows(IllegalArgumentException::class.java) {
+            readBoundedSnapshot(ByteArray(WearDataProtocol.MAX_SNAPSHOT_BYTES + 1).inputStream())
+        }
     }
 }
 

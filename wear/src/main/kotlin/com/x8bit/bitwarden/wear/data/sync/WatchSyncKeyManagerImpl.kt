@@ -43,12 +43,12 @@ class WatchSyncKeyManagerImpl : WatchSyncKeyManager {
 
     override fun getPublicKey(): Result<ByteArray> = keyResult {
         keyStore.getCertificate(RECIPIENT_KEY_ALIAS)?.publicKey?.encoded
-            ?: throw IOException("Companion key missing; provision again")
+            ?: throw IOException("Companion key missing")
     }
 
     override fun decrypt(envelope: ByteArray, context: ByteArray): Result<ByteArray> = keyResult {
         val privateKey = keyStore.getKey(RECIPIENT_KEY_ALIAS, null) as? PrivateKey
-            ?: throw IOException("Companion key missing; provision again")
+            ?: throw IOException("Companion key missing")
         WearPayloadCipher.decrypt(privateKey, envelope, context).getOrThrow()
     }
 

@@ -23,7 +23,6 @@ import java.io.IOException
  * @property sdkSource Cryptographic access to the already unlocked vault.
  * @property accountSource Active unlocked account and TOTP entitlement.
  * @property iconSource Website icon metadata respecting the phone configuration.
- * @property consentSource Account and companion authorization.
  * @property dispatcherManager Dispatchers for vault reads.
  */
 class WearOtpSourceImpl(
@@ -31,15 +30,13 @@ class WearOtpSourceImpl(
     private val sdkSource: VaultSdkSource,
     private val accountSource: WearOtpAccountSource,
     private val iconSource: WearOtpIconSource,
-    private val consentSource: WearConsentDiskSource,
     private val dispatcherManager: DispatcherManager,
 ) : WearOtpSource {
     override suspend fun getEntries(
         userId: String,
-        deviceId: String,
     ): Result<List<WearOtpEntry>> = withContext(dispatcherManager.io) {
         try {
-            loadEntries(userId, deviceId)
+            loadEntries(userId)
         } catch (error: CancellationException) {
             throw error
         } catch (_: IOException) {
@@ -53,20 +50,17 @@ class WearOtpSourceImpl(
         }
     }
 
-    private suspend fun loadEntries(
-        userId: String,
-        deviceId: String,
-    ): Result<List<WearOtpEntry>> {
+    private suspend fun loadEntries(userId: String): Result<List<WearOtpEntry>> {
         val account = accountSource.getAccount(userId) ?: return failure()
-        val consent = authorizedConsent(userId, deviceId) ?: return failure()
         val ciphers = diskSource.getLoginCiphers(userId).filter { it.isCandidate() }
         val entries = mutableListOf<WearOtpEntry>()
         for (cipher in ciphers) {
-            if (!isAuthorized(account, consent)) return failure()
+            if (!isAuthorized(account)) return failure()
             val decrypted = sdkSource.decryptCipher(userId, cipher.toEncryptedSdkCipher())
-                .getOrNull() ?: return failure()
-            if (!isAuthorized(account, consent)) return failure()
-            if (!decrypted.isEligible(account.isPremium)) continue
+                .getOrNull()
+            if (!isAuthorized(account)) return failure()
+            // One undecryptable item must not stop every other code from reaching the watch.
+            if (decrypted == null || !decrypted.isEligible(account.isPremium)) continue
             val id = decrypted.id?.takeIf { it.isNotBlank() } ?: return failure()
             if (id != cipher.id || entries.any { it.id == id }) return failure()
             entries.add(
@@ -79,20 +73,12 @@ class WearOtpSourceImpl(
                 ),
             )
         }
-        if (!isAuthorized(account, consent)) return failure()
+        if (!isAuthorized(account)) return failure()
         return Result.success(entries)
     }
 
-    private fun authorizedConsent(userId: String, deviceId: String): WearConsent? = consentSource
-        .getConsents().getOrNull()
-        ?.singleOrNull {
-            it.userId == userId && it.deviceId == deviceId && it.isAuthorized &&
-                !it.publicKey.isNullOrBlank()
-        }
-
-    private fun isAuthorized(account: UserState.Account, consent: WearConsent): Boolean =
-        accountSource.getAccount(account.userId) == account &&
-            authorizedConsent(account.userId, consent.deviceId) == consent
+    private fun isAuthorized(account: UserState.Account): Boolean =
+        accountSource.getAccount(account.userId) == account
 
     private fun failure(): Result<List<WearOtpEntry>> =
         Result.failure(IOException("Wear OTP preparation unavailable"))

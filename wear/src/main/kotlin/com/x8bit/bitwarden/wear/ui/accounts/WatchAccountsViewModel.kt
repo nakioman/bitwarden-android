@@ -26,7 +26,7 @@ private const val TICK_MILLIS = 1000L
  * Holds codes only during a foreground session, never saving them to SavedStateHandle.
  *
  * @property source Protected, seed-free account reads.
- * @property snapshots Committed snapshot invalidation signals.
+ * @property snapshots Key publication and snapshot change signals.
  * @property security Uncached local access checks.
  * @property clock Time for expiry and the visible countdown.
  */
@@ -65,6 +65,8 @@ class WatchAccountsViewModel @Inject constructor(
         foreground = true
         sessionJob = viewModelScope.launch {
             val session = coroutineContext[Job]
+            // Republishing the key on every visit lets the phone recover if it was ever lost.
+            launch { snapshots.provision() }
             launch {
                 snapshots.changes.collect {
                     sendAction(WatchAccountsAction.Internal.Changed(session))

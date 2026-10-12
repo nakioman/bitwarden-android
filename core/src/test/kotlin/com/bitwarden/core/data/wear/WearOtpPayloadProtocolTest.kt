@@ -111,21 +111,16 @@ class WearOtpPayloadProtocolTest {
     }
 
     @Test
-    fun `shared payload can be encrypted framed decrypted and decoded without changing fields`() {
+    fun `shared payload can be encrypted decrypted and decoded without changing fields`() {
         val keys = KeyPairGenerator.getInstance("RSA").apply { initialize(2048) }.generateKeyPair()
-        val header = WearSnapshotHeader(
-            "22222222-2222-4222-8222-222222222222", 1,
-            WearSnapshotProtocol.recipientKeyId(keys.public.encoded),
-        )
         val plaintext = WearOtpPayloadProtocol.encode(listOf(entry)).getOrThrow()
         try {
-            val context = WearSnapshotProtocol.context(header).getOrThrow()
+            val context = WearDataProtocol.snapshotContext(
+                WearDataProtocol.recipientKeyId(keys.public.encoded),
+            )
             val ciphertext = WearPayloadCipher.encrypt(keys.public.encoded, plaintext, context)
                 .getOrThrow()
-            val frame = WearSnapshotProtocol.decode(WearSnapshotProtocol.encode(
-                WearSnapshotFrame(header, ciphertext),
-            ).getOrThrow()).getOrThrow()
-            val restored = WearPayloadCipher.decrypt(keys.private, frame.ciphertext, context)
+            val restored = WearPayloadCipher.decrypt(keys.private, ciphertext, context)
                 .getOrThrow()
             try {
                 assertArrayEquals(plaintext, restored)

@@ -16,7 +16,7 @@ import com.x8bit.bitwarden.data.tools.generator.datasource.disk.GeneratorDiskSou
 import com.x8bit.bitwarden.data.tools.generator.datasource.disk.PasswordHistoryDiskSource
 import com.x8bit.bitwarden.data.vault.datasource.disk.VaultDiskSource
 import com.x8bit.bitwarden.data.vault.datasource.sdk.VaultSdkSource
-import com.x8bit.bitwarden.data.wear.WearConsentRevoker
+import com.x8bit.bitwarden.data.wear.WearSyncLogoutHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -39,7 +39,7 @@ internal class UserLogoutManagerImpl(
     private val vaultSdkSource: VaultSdkSource,
     private val credentialExchangeRegistryManager: CredentialExchangeRegistryManager,
     private val userNotificationPolicyManager: UserNotificationPolicyManager,
-    private val wearConsentRevoker: WearConsentRevoker,
+    private val wearSyncLogoutHandler: WearSyncLogoutHandler,
     dispatcherManager: DispatcherManager,
 ) : UserLogoutManager {
     private val unconfinedScope = CoroutineScope(dispatcherManager.unconfined)
@@ -52,7 +52,7 @@ internal class UserLogoutManagerImpl(
 
     override fun logout(userId: String, reason: LogoutReason) {
         authDiskSource.userState ?: return
-        withdrawWearConsent(userId)
+        wearSyncLogoutHandler.onLogout(userId = userId, isHardLogout = true)
         Timber.d("logout reason=$reason")
         val isSecurityStamp = reason == LogoutReason.SecurityStamp
         if (isSecurityStamp) {
@@ -75,15 +75,8 @@ internal class UserLogoutManagerImpl(
         mutableLogoutEventFlow.tryEmit(LogoutEvent(loggedOutUserId = userId))
     }
 
-    private fun withdrawWearConsent(userId: String) {
-        if (wearConsentRevoker.revokeAccount(userId).isFailure) {
-            // Local logout must still clear credentials if companion storage is unavailable.
-            Timber.w("Wear withdrawal could not be persisted")
-        }
-    }
-
     override fun softLogout(userId: String, reason: LogoutReason) {
-        withdrawWearConsent(userId)
+        wearSyncLogoutHandler.onLogout(userId = userId, isHardLogout = false)
         Timber.d("softLogout reason=$reason")
         val isSecurityStamp = reason == LogoutReason.SecurityStamp
         if (isSecurityStamp) {

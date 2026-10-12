@@ -2,19 +2,19 @@ package com.x8bit.bitwarden.data.wear
 
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.conflate
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
 /**
- * Processes lifecycle hints sequentially without retaining any decrypted OTP data.
- *
- * @property eventSource Existing account, vault, and durable consent notifications.
- * @property coordinator Authorization-checked preparation, withdrawal repair, and delivery.
- * @property scope Process-lifetime worker scope; independent of settings screen cancellation.
+ * @property eventSource Local changes that may require a watch update.
+ * @property syncManager Publishes the active account's codes when allowed.
+ * @property scope Process-lifetime worker scope.
  */
 class WearSyncLifecycleManagerImpl(
     private val eventSource: WearSyncEventSource,
-    private val coordinator: WearSyncCoordinator,
+    private val syncManager: WearSyncManager,
     private val scope: CoroutineScope,
 ) : WearSyncLifecycleManager {
     private var initialized = false
@@ -24,20 +24,12 @@ class WearSyncLifecycleManagerImpl(
         if (initialized) return
         initialized = true
         scope.launch(CoroutineExceptionHandler { _, _ ->
-            Timber.w("Wear lifecycle observation stopped unexpectedly")
+            Timber.w("Wear sync observation stopped unexpectedly")
         }) {
-            report(coordinator.retry())
-            eventSource.events.collect { event ->
-                val result = when (event) {
-                    is WearSyncEvent.Refresh -> coordinator.refresh(event.userId)
-                    WearSyncEvent.Retry -> coordinator.retry()
-                }
-                report(result)
+            // Bursts of vault changes collapse into a single update.
+            eventSource.events.onStart { emit(Unit) }.conflate().collect {
+                if (syncManager.sync().isFailure) Timber.d("Wear sync update failed")
             }
         }
-    }
-
-    private fun report(result: Result<Unit>) {
-        if (result.isFailure) Timber.d("Wear command remains unavailable or pending")
     }
 }

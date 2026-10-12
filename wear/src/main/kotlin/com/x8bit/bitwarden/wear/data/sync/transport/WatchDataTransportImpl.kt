@@ -1,14 +1,17 @@
 package com.x8bit.bitwarden.wear.data.sync.transport
 
+import android.net.Uri
 import com.bitwarden.core.data.wear.WearDataProtocol
-import com.bitwarden.core.data.wear.WearSnapshotProtocol
 import com.google.android.gms.tasks.Task
 import com.google.android.gms.wearable.DataClient
-import com.google.android.gms.wearable.DataItem
+import com.google.android.gms.wearable.DataItemBuffer
 import com.google.android.gms.wearable.DataMapItem
 import com.google.android.gms.wearable.NodeClient
 import com.google.android.gms.wearable.PutDataRequest
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
 import java.io.ByteArrayOutputStream
@@ -18,37 +21,61 @@ import kotlin.coroutines.resume
 
 private const val REQUEST_TIMEOUT_MILLIS = 15_000L
 
-/** Google Play transport; assets contain encrypted frames and never plaintext vault data. */
+/** Google Play services transport; snapshots are encrypted and never contain plaintext. */
 class WatchDataTransportImpl(
     private val dataClient: DataClient,
     private val nodeClient: NodeClient,
 ) : WatchDataTransport {
-    override suspend fun getLocalNodeId(): Result<String> = transportResult {
-        nodeClient.localNode.awaitTransport().id
+    override val snapshotChanges: Flow<Unit> = callbackFlow {
+        val listener = DataClient.OnDataChangedListener { trySend(Unit) }
+        val uri = Uri.Builder().scheme("wear").path(WearDataProtocol.SNAPSHOT_PATH_PREFIX).build()
+        dataClient.addListener(listener, uri, DataClient.FILTER_PREFIX)
+        awaitClose { dataClient.removeListener(listener) }
     }
 
-    override suspend fun readPacket(item: DataItem): Result<ByteArray> = transportResult {
-        val asset = requireNotNull(
-            DataMapItem.fromDataItem(item).dataMap.getAsset(WearDataProtocol.PACKET_ASSET),
-        )
+    override suspend fun publishPublicKey(publicKey: ByteArray): Result<Unit> = transportResult {
+        dataClient.putDataItem(
+            PutDataRequest.create(WearDataProtocol.PUBLIC_KEY_PATH)
+                .setData(publicKey.copyOf())
+                .setUrgent(),
+        ).awaitTransport()
+        Unit
+    }
+
+    override suspend fun deletePublicKey(): Result<Unit> = transportResult {
+        val localNodeId = localNodeId()
+        val uri = Uri.Builder().scheme("wear").authority(localNodeId)
+            .path(WearDataProtocol.PUBLIC_KEY_PATH).build()
+        dataClient.deleteDataItems(uri).awaitTransport()
+        Unit
+    }
+
+    override suspend fun readSnapshot(): Result<WatchSnapshot?> = transportResult {
+        val path = WearDataProtocol.snapshotPath(localNodeId())
+        // Omitting the host matches the snapshot whichever phone published it.
+        val uri = Uri.Builder().scheme("wear").path(path).build()
+        val item = dataClient.getDataItems(uri).awaitTransport { it.release() }.use { items ->
+            items.firstOrNull()?.freeze()
+        } ?: return@transportResult null
+        val map = DataMapItem.fromDataItem(item).dataMap
+        val keyId = requireNotNull(map.getString(WearDataProtocol.RECIPIENT_KEY_ID))
+        val asset = requireNotNull(map.getAsset(WearDataProtocol.SNAPSHOT_ASSET))
         val response = dataClient.getFdForAsset(asset).awaitTransport { it.release() }
-        try {
-            requireNotNull(response.inputStream).use(::readBoundedPacket)
+        val envelope = try {
+            requireNotNull(response.inputStream).use(::readBoundedSnapshot)
         } finally {
             response.release()
         }
+        WatchSnapshot(keyId, envelope)
     }
 
-    override suspend fun publishReceipt(
-        localNodeId: String,
-        receipt: ByteArray,
-    ): Result<Unit> = transportResult {
-        require(receipt.size == WearDataProtocol.MAX_RECEIPT_BYTES)
-        dataClient.putDataItem(
-            PutDataRequest.create(WearDataProtocol.receiptPath(localNodeId))
-                .setData(receipt.copyOf()).setUrgent(),
-        ).awaitTransport()
-    }
+    private suspend fun localNodeId(): String = nodeClient.localNode.awaitTransport().id
+}
+
+private inline fun <T> DataItemBuffer.use(block: (DataItemBuffer) -> T): T = try {
+    block(this)
+} finally {
+    release()
 }
 
 private suspend fun <T> transportResult(block: suspend () -> T): Result<T> = try {
@@ -93,13 +120,13 @@ private suspend fun <T> Task<T>.awaitTransport(discard: (T) -> Unit = {}): T =
         }
     }?.getOrThrow() ?: throw IOException("Wear data timed out")
 
-/** Reads a complete frame within the wire size limit; oversized streams fail without truncation. */
-internal fun readBoundedPacket(stream: InputStream): ByteArray =
+/** Reads a complete snapshot within the size limit; oversized streams fail without truncation. */
+internal fun readBoundedSnapshot(stream: InputStream): ByteArray =
     ByteArrayOutputStream().use { output ->
         val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
         var count = stream.read(buffer)
         while (count != -1) {
-            require(output.size() <= WearSnapshotProtocol.MAX_PACKET_BYTES - count)
+            require(output.size() <= WearDataProtocol.MAX_SNAPSHOT_BYTES - count)
             output.write(buffer, 0, count)
             count = stream.read(buffer)
         }
